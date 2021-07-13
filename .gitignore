@@ -1,0 +1,6 @@
+db/db.sqlite
+mails
+vendor
+src/data
+logs
+.vscode

@@ -1,0 +1,6 @@
+
+plan
+ + skaffe nogle mails
+ - indlæse mails i synapsen
+ - håndterer attachments
+ - se på reactphp for web og schedulering

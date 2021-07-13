@@ -1,0 +1,38 @@
+mail til matrix
+- en mail er sendt til en eller flere modtagere for et givet domæne.
+  - Ved 1 modtager så skal mailen lande i et rum, som har afsenders navn,
+    og afsender og modtager som er medlemmer af dette rum.
+    - Hvis rummet ikke findes oprettes dette.
+    - Hvis afsenders ikke findes oprettes denne som en puppet
+    - Hvis modtager ikke findes afvises mailen.
+
+  - Ved 2 eller flere modtagere så skal mailen lande i et rum som har emnet som navn,
+    og afsender og alle modtagere er medlemmer af dette rum
+    - Hvis rummet ikke findes oprettes dette.
+    - Hvis afsenders ikke findes oprettes denne som en puppet
+    - Hvis ingen af modtagerne ikke findes afvises mail, men hvis en eller flere findes oprettes
+      dem som ikke findes som puppets
+
+
+matrix til mail
+- når en besked sendes til et rum som indholder mail-modtagere omdannes besked til en mail,
+  der sendes til alle modtagere.
+
+puppet
+- en puppet er en bruger hvis matrix id starter med @mail_...:domæne
+- ... er email adressen, som er blevet behandlet, så den ikke konflikter ifht matrix id
+  og den kan udlæses når den skal sendes på mail
+  Fx soren@bronsted.dk bliver til @mail_soren/bronsted.dk:syntest.lan, hvor @ bliver udskiftet /.
+  For at oprette sådan en bruger i matrix er localpart mail_soren/bronsted.dk.
+  Udskiftning af '@' er lige frem, for den forefindes kun en gang, men når den skal oversættes
+  tilbage til '@' skal søgningen sker sker bagfra, da '/' kan findes flere gange.
+
+brugere
+- denne service har en tabel over hvilke bruger den servicer, dvs at den med jævne mellemrum
+  hente nye mails og behandler, som ovenfor beskrevet. Måden man opretter dem på kunne ske
+  gennem en chat med denne service
+
+rum
+- denne service en nødt til at vedholde en tabel over rum som den behandler, da det ikke er
+  muligt at udtrække alle rum fra matrix, så den skal selv holde styr på hvilke rum den
+  opretter
