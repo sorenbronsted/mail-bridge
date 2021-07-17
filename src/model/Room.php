@@ -2,8 +2,10 @@
 
 namespace bronsted;
 
-use GuzzleHttp\Exception\ClientException;
+use DateTime;
 use stdClass;
+use ZBateson\MailMimeParser\Header\HeaderConsts;
+use ZBateson\MailMimeParser\Message;
 
 class Room extends ModelObject
 {
@@ -29,16 +31,16 @@ class Room extends ModelObject
         $data             = new stdClass();
         $data->visibility = 'private';
         $data->name       = $name;
-        $data->invite     = array_map(function(User $item) {
-                                return $item->id;
-                            }, $invitations);
         $result           = $http->post($url, $data);
 
         $room = new Room($creator, $result->room_id, $name, $result->room_alias ?? '');
         $room->save();
 
-        $invitations[] = $creator;
-        Member::addAll($room, $invitations);
+        Member::addLocal($room, $creator);
+
+        foreach($invitations as $user) {
+            Member::add($http, $room, $user);
+        }
         return $room;
     }
 
@@ -46,39 +48,26 @@ class Room extends ModelObject
     {
         try {
             Member::getOneBy(['room_uid' => $this->uid, 'user_uid' => $user->uid]);
-        }
-        catch(NotFoundException $e) {
+        } catch (NotFoundException $e) {
             return false;
         }
         return true;
     }
 
+    public function addUser(Http $http, User $user)
+    {
+        Member::add($http, $this, $user);
+    }
+
     public function invite(Http $http, User $user): void
     {
         $creator = User::getByUid($this->creator_uid);
-        Member::addAll($this, [$user]);
 
         //$this->log->debug('Invite ' . $user->id . ' to room ' . $roomId);
         $url           = '/_matrix/client/r0/rooms/' . urlencode($this->id) . '/invite?user_id=' . $creator->id;
         $data          = new stdClass();
         $data->user_id = $user->id;
-
-        $tryAgain = false;
-        do {
-            try {
-                $tryAgain = false;
-                $http->post($url, $data);
-            } catch (ClientException $e) {
-                if ($e->getCode() == 429) { // Rate limit
-                    $resp = json_decode($e->getResponse()->getBody()->getContents());
-                    $this->log->debug("Rate limit. retry after ms: " . $resp->retry_after_ms);
-                    usleep($resp->retry_after_ms * 1000);
-                    $tryAgain = true;
-                } else {
-                    throw $e;
-                }
-            }
-        } while ($tryAgain);
+        $http->post($url, $data);
     }
 
     public function join(Http $http, User $user)
@@ -88,16 +77,40 @@ class Room extends ModelObject
         $http->post($url, $data);
     }
 
-    public function send(Http $http, User $from, $text, $html)
+    public function send(Http $http, User $from, Message $message, DateTime $ts)
     {
-        $uid = uniqid('', true); //TODO should derived from text or $html some how
-        $url                  = '/_matrix/client/r0/rooms/' . urlencode($this->id) . '/send/m.room.message/' . $uid . '?user_id=' . urlencode($from->id);
-        $data                 = new stdClass();
-        $data->msgtype        = 'm.text';
-        $data->body           = $text;
-        $data->format         = 'org.matrix.custom.html';
-        $data->formatted_body = $html;
-        $data->sender         = $from->id;
+        // Asumes that a user can only one mail pr second
+        $uid = md5($message->getHeaderValue(HeaderConsts::MESSAGE_ID));
+        //echo $from->email . $message->getHeaderValue(HeaderConsts::MESSAGE_ID) . PHP_EOL;
+        //echo $uid . PHP_EOL;
+
+        $url = '/_matrix/client/r0/rooms/' . urlencode($this->id) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->id);
+
+        $data = new stdClass();
+        $data->msgtype = 'm.text';
+        $data->body = $message->getTextContent() ?? strip_tags($message->getHtmlContent());
+        $data->format = 'org.matrix.custom.html';
+        $data->formatted_body = $message->getHtmlContent() ?? '';
+        $data->sender = $from->id;
+        //echo $url . PHP_EOL;
+        //var_dump($data);
         $http->put($url, $data);
+
+        for ($i = 0; $i < $message->getAttachmentCount(); $i++) {
+            $attachment = $message->getAttachmentPart($i);
+            $type = $attachment->getHeaderValue(HeaderConsts::CONTENT_TYPE);
+            $filename = $attachment->getHeaderParameter(HeaderConsts::CONTENT_TYPE, 'filename') ?? uniqid();
+
+            $url = '/_matrix/media/r0/upload?filename=' . urlencode($filename);
+            $result = $http->uploadStream($url, $type, $attachment->getContentStream());
+
+            $url = '/_matrix/client/r0/rooms/' . urlencode($this->id) . '/send/m.room.message/' . urlencode($uid . "+$i") . '?user_id=' . urlencode($from->id);
+
+            $data = new stdClass();
+            $data->msgtype = 'm.file';
+            $data->body = $filename;
+            $data->url = $result->content_uri;
+            $http->put($url, $data);
+        }
     }
 }

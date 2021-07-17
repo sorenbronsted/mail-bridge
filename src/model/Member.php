@@ -13,15 +13,25 @@ class Member extends ModelObject
         $this->user_uid = $user_uid;
     }
 
-    public static function addAll(Room $room, array $members)
+    public static function addLocal(Room $room, User $user)
     {
-        foreach ($members as $user) {
-            try {
-                Member::getOneBy(['room_uid' => $room->uid, 'user_uid' => $user->uid]);
-            } catch (NotFoundException $e) {
-                $member = new Member($room->uid, $user->uid);
-                $member->save();
-            }
+        try {
+            Member::getOneBy(['room_uid' => $room->uid, 'user_uid' => $user->uid]);
+        } catch (NotFoundException $e) {
+            $member = new Member($room->uid, $user->uid);
+            $member->save();
+        }
+    }
+
+    public static function add(Http $http, Room $room, User $user)
+    {
+        try {
+            Member::getOneBy(['room_uid' => $room->uid, 'user_uid' => $user->uid]);
+        } catch (NotFoundException $e) {
+            $room->invite($http, $user);
+            $room->join($http, $user);
+            $member = new Member($room->uid, $user->uid);
+            $member->save();
         }
     }
 }

@@ -82,21 +82,14 @@ class AppService
             return;
         }
 
-        /* capture events
+        /* capture events */
         $file = __DIR__ . '/data/events/' . $txnId . '.json';
-        file_put_contents($file, json_encode($events));
-        */
+        //file_put_contents($file, json_encode($events));
+
 
         foreach ($events->events as $event) {
             if (!isset($event->type)) {
                 continue;
-            }
-            // This will perform an auto join of user/puppets
-            if ($event->type == 'm.room.member' && $event->content->membership == 'invite' && strpos($event->state_key, '@mail_') !== false) {
-                // Don't use model objects because this will cause a syncronisation problem.
-                $url = '/_matrix/client/r0/rooms/' . urlencode($event->room_id) . '/join?user_id=' . urlencode($event->state_key);
-                $data  = new stdClass();
-                $this->http->post($url, $data);
             }
         }
     }

@@ -14,7 +14,7 @@ class User extends ModelObject
     public function __construct(?string $name = null, ?string $email = null, ?string $domain = null, ?string $local_id = null)
     {
         $this->name = $name;
-        $this->email = $email;
+        $this->email = strtolower($email);
         if ($local_id) {
             $this->id = '@' . $local_id . ':' . $domain;
         }
@@ -63,7 +63,7 @@ class User extends ModelObject
         if ($this->email == null) {
             return;
         }
-        $email = strtolower($this->email);
+        $email = $this->email;
         $idx = strpos($email, '@');
         $email[$idx] = '/';
         $this->id = '@mail_' . $email . ':' . $domain;

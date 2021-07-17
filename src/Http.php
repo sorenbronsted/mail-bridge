@@ -3,24 +3,32 @@
 namespace bronsted;
 
 use Exception;
-use GuzzleHttp\Client;
+use JustSteveKing\HttpSlim\HttpClient;
 use stdClass;
 
 class Http
 {
-    private Client $client;
+    private HttpClient $client;
     public AppServerConfig $config;
 
-    public function __construct(AppServerConfig $config, Client $client)
+    public function __construct(AppServerConfig $config, HttpClient $client)
     {
         $this->client = $client;
         $this->config = $config;
         $this->header = ['Authorization' => 'Bearer ' . $config->tokenAppServer];
     }
 
-    public function post(string $url, stdClass $data): stdClass
+    public function uploadStream(string $url, string $contentType, $stream): stdClass
     {
-        $response = $this->client->post($this->config->baseUrl . $url, ['headers' => $this->header, 'json' => $data]);
+        //TODO: https://matrix.org/docs/spec/client_server/latest#id401 og HttpClient
+        $result = new stdClass();
+        $result->content_uri = 'mxc://syntest.lan/' . uniqid();
+        return $result;
+    }
+
+    public function post(string $url, stdClass $data, array $additional = []): stdClass
+    {
+        $response = $this->client->post($this->config->baseUrl . $url, (array)$data, array_merge($this->header, $additional));
         $code = $response->getStatusCode();
         if ($code != 200) {
             throw new Exception("Http request message failed with: " . $code);
@@ -30,7 +38,7 @@ class Http
 
     public function put(string $url, stdClass $data): stdClass
     {
-        $response = $this->client->put($this->config->baseUrl . $url, ['headers' => $this->header, 'json' => $data]);
+        $response = $this->client->put($this->config->baseUrl . $url, (array)$data, $this->header);
         $code = $response->getStatusCode();
         if ($code != 200) {
             throw new Exception("Http request message failed with: " . $code);
@@ -40,7 +48,7 @@ class Http
 
     public function get(string $url): stdClass
     {
-        $response = $this->client->get($this->config->baseUrl. $url, ['headers' => $this->header]);
+        $response = $this->client->get($this->config->baseUrl. $url, $this->header);
         $code = $response->getStatusCode();
         if ($code != 200) {
             throw new Exception("Request failed: " . $url, $code);
