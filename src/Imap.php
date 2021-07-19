@@ -2,6 +2,7 @@
 namespace bronsted;
 
 use Exception;
+use PHPMailer\PHPMailer\PHPMailer;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\Header\DateHeader;
 use ZBateson\MailMimeParser\Header\HeaderConsts;
@@ -25,6 +26,24 @@ class Imap
     public function fetch()
     {
         throw new Exception('Not implemented yet');
+    }
+
+    public function send(User $sender, DbCursor $recipients, string $subject, string $message, array $attachments = [])
+    {
+        //TODO needs config
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host = 'localhost';
+        $mail->Port = 1025;
+
+        $mail->setFrom($sender->email, $sender->name);
+        foreach($recipients as $recipient) {
+            $mail->addAddress($recipient->email, $recipient->name);
+        }
+        $mail->Subject = $subject;
+        $mail->Body = $message;
+
+        $mail->send();
     }
 
     public function import($fh)

@@ -3,12 +3,11 @@ plan
  + skaffe nogle mails
  + indlæse mails i synapsen
  + håndterer attachments
- + se på reactphp for web og schedulering ( det er svært, bør måske til python da de asyncio med async/await)
- - implementere upload
- - send email
+ + se på reactphp for web og schedulering ( det er svært, check php swoole, eller cron til schedulering)
  + teste performance på et apache/php setting, lige nu er det begrænset (søg hacks)
- - chat kræver at denne appservice er en bruger i matrix som hedder imapbot.
-   Tanken er at hver bruger opretter en rum 'imapbot' og invitere imapbot til denne.
-   Herfra kan konfiguration og andre tjenester foregå igennem en dialog.
-
+   Har løst performance problemet, som lå i at vente på at en invite blev besvar besvaret af en join (auto join)
+   Dette er ikke nødvendigt, da en appservice bare sender en invite og en join.
+ + implementere upload
+ + send email
+ - registrer en imap konto hos denne appservice
 

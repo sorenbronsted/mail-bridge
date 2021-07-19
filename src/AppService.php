@@ -13,13 +13,13 @@ class AppService
 {
     private AppServerConfig $config;
     private LoggerInterface $log;
-    private Http $http;
+    private Imap $imap;
 
-    public function __construct(LoggerInterface $log, AppServerConfig $source, Http $http)
+    public function __construct(LoggerInterface $log, AppServerConfig $source, Imap $imap)
     {
         $this->log = $log;
         $this->config = $source;
-        $this->http = $http;
+        $this->imap = $imap;
     }
 
     public function events(Request $request, Response $response, array $args): MessageInterface
@@ -90,6 +90,20 @@ class AppService
         foreach ($events->events as $event) {
             if (!isset($event->type)) {
                 continue;
+            }
+
+            if ($event->type == 'm.room.message') {
+                $sender = User::getOneBy(['id' => $event->sender]);
+                if (!$sender->email) {
+                    continue;
+                }
+
+                $room = Room::getOneBy(['id' => $event->room_id]);
+                $recipients = $room->getMailRecipients($sender);
+                // TODO html body and attachments
+                if ($event->content->msgtype == 'm.text') {
+                    $this->imap->send($sender, $recipients, $room->name, $event->content->body);
+                }
             }
         }
     }

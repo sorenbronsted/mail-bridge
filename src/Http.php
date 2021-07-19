@@ -5,6 +5,7 @@ namespace bronsted;
 use Exception;
 use JustSteveKing\HttpSlim\HttpClient;
 use stdClass;
+use Symfony\Component\HttpClient\Psr18Client;
 
 class Http
 {
@@ -18,12 +19,24 @@ class Http
         $this->header = ['Authorization' => 'Bearer ' . $config->tokenAppServer];
     }
 
-    public function uploadStream(string $url, string $contentType, $stream): stdClass
+    public function postStream(string $url, string $contentType, $stream): stdClass
     {
-        //TODO: https://matrix.org/docs/spec/client_server/latest#id401 og HttpClient
-        $result = new stdClass();
-        $result->content_uri = 'mxc://syntest.lan/' . uniqid();
-        return $result;
+        //TODO: https://matrix.org/docs/spec/client_server/latest#post-matrix-media-r0-upload og HttpClient
+
+        $requestFactory = new Psr18Client();
+        $request = $requestFactory->createRequest('POST', $this->config->baseUrl . $url);
+        foreach (array_merge($this->header, ['Content-Type' => $contentType]) as $name => $value) {
+            $request = $request->withHeader($name, $value);
+        }
+        $request = $request->withBody($stream);
+
+        $client = $this->client->getClient();
+        $response = $client->sendRequest($request);
+        $code = $response->getStatusCode();
+        if ($code != 200) {
+            throw new Exception("Request failed: " . $url, $code);
+        }
+        return json_decode($response->getBody()->getContents());
     }
 
     public function post(string $url, stdClass $data, array $additional = []): stdClass

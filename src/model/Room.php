@@ -99,18 +99,25 @@ class Room extends ModelObject
         for ($i = 0; $i < $message->getAttachmentCount(); $i++) {
             $attachment = $message->getAttachmentPart($i);
             $type = $attachment->getHeaderValue(HeaderConsts::CONTENT_TYPE);
-            $filename = $attachment->getHeaderParameter(HeaderConsts::CONTENT_TYPE, 'filename') ?? uniqid();
+            $name = $attachment->getHeaderParameter(HeaderConsts::CONTENT_TYPE, 'name') ?? uniqid();
 
-            $url = '/_matrix/media/r0/upload?filename=' . urlencode($filename);
-            $result = $http->uploadStream($url, $type, $attachment->getContentStream());
+            $url = '/_matrix/media/r0/upload?filename=' . urlencode($name);
+            $result = $http->postStream($url, $type, $attachment->getContentStream());
 
             $url = '/_matrix/client/r0/rooms/' . urlencode($this->id) . '/send/m.room.message/' . urlencode($uid . "+$i") . '?user_id=' . urlencode($from->id);
 
             $data = new stdClass();
             $data->msgtype = 'm.file';
-            $data->body = $filename;
+            $data->body = $name;
             $data->url = $result->content_uri;
             $http->put($url, $data);
         }
+    }
+
+    public function getMailRecipients(User $sender): DbCursor
+    {
+        $sql = "select u.* from user u join member m on u.uid = m.user_uid ".
+            "where m.room_uid = :room_uid and u.email is not null and length(u.email) > 0 and u.uid != :sender_uid";
+        return User::getObjects($sql, ['room_uid' => $this->uid, 'sender_uid' => $sender->uid]);
     }
 }
