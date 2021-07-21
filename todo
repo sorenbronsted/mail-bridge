@@ -9,5 +9,10 @@ plan
    Dette er ikke nødvendigt, da en appservice bare sender en invite og en join.
  + implementere upload
  + send email
+ + sende mail fra et nyt rum og ny bruger
  - registrer en imap konto hos denne appservice
+ - håndterer mail bounce
+ - import se https://github.com/matrix-org/matrix-doc/blob/17e0ef4b91034b0cdb010416225ffac65b4107fc/specification/application_service_api.rst#232timestamp-massaging
+   - dvs at ved alle kald skal denne ts parameter være på og det er unix ts i millisecond!
+   - https://www.epochconverter.com/
 

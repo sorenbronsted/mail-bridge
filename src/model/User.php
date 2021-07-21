@@ -2,8 +2,6 @@
 
 namespace bronsted;
 
-use stdClass;
-
 class User extends ModelObject
 {
 
@@ -23,38 +21,27 @@ class User extends ModelObject
         }
     }
 
+    public function setEmailById(string $id)
+    {
+        $this->id = $id;
+        $this->calcEmail();
+    }
+
     public function localId(): string
     {
         return substr($this->id, 1, strpos($this->id, ':') - 1);
     }
 
-    public static function getOrCreate(Http $http, string $name, string $email): User
+    public static function getNonePuppets(): DbCursor
     {
-        try {
-            return self::getOneBy(['email' => $email]);
-        }
-        catch(NotFoundException $e) {
-            // Ignore will be created
-        }
-        return self::create($http, $name, $email);
+        $sql = "select u.* from user u where substr(id,0,6) != '@mail_'";
+        return self::getObjects($sql, []);
     }
 
-    public static function create(Http $http, string $name, string $email): User
+    public static function create(string $name, string $email, string $domain): User
     {
-        $user = new User($name, $email, $http->config->domain);
-
-        // Create the user
-        $url            = '/_matrix/client/r0/register';
-        $data           = new stdClass();
-        $data->type     = "m.login.application_service";
-        $data->username = $user->localId();
-        $http->post($url, $data);
+        $user = new User($name, $email, $domain);
         $user->save();
-
-        $url               = '/_matrix/client/r0/profile/' . urlencode($user->id) . '/displayname?user_id=' . urlencode($user->id);
-        $data              = new stdClass();
-        $data->displayname = $user->name;
-        $http->put($url, $data);
         return $user;
     }
 
@@ -67,5 +54,17 @@ class User extends ModelObject
         $idx = strpos($email, '@');
         $email[$idx] = '/';
         $this->id = '@mail_' . $email . ':' . $domain;
+    }
+
+    private function calcEmail()
+    {
+        if ($this->id == null) {
+            return;
+        }
+        // id example: @mail_me/somewhere.net@syntest.lan
+        $parts = explode('@', substr($this->id, strlen('@mail_')));
+        $idx = strpos($parts[0], '/');
+        $parts[0][$idx] = '@';
+        $this->email = $parts[0];
     }
 }

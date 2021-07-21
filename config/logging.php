@@ -14,11 +14,11 @@ function logging(Container $container)
     if (!file_exists($path)) {
         mkdir($path, 0777, true);
     }
+    $path = 'php://stderr';
 
-    $container->set(Logger::class, new Logger('logger'));
-    $container->set(LoggerInterface::class, function(ContainerInterface $container) use($path) {
-        $log = $container->get(Logger::class);
-        $log->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
-        return $log;
-    });
+    $log = new Logger('logger', []);
+    $log->pushHandler(new StreamHandler($path, Logger::DEBUG));
+    Log::setInstance($log);
+    $container->set(Logger::class, $log);
+    $container->set(LoggerInterface::class, $log);
 }
