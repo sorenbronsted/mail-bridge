@@ -21,23 +21,23 @@ class MatrixClient
         $this->http = $http;
     }
 
-    public function createUser(User $user)
+    public function createUser(User $user, DateTime $ts)
     {
-        $url = '/_matrix/client/r0/register';
+        $url = '/_matrix/client/r0/register?ts=' . ($ts->format('U') * 1000);
         $data = new stdClass();
         $data->type = "m.login.application_service";
         $data->username = $user->localId();
         $this->http->post($url, $data);
 
-        $url = '/_matrix/client/r0/profile/' . urlencode($user->id) . '/displayname?user_id=' . urlencode($user->id);
+        $url = '/_matrix/client/r0/profile/' . urlencode($user->id) . '/displayname?user_id=' . urlencode($user->id) . '&ts=' . ($ts->format('U') * 1000);
         $data = new stdClass();
         $data->displayname = $user->name;
         $this->http->put($url, $data);
     }
 
-    public function createRoom(string $name, User $creator): string
+    public function createRoom(string $name, User $creator, DateTime $ts): string
     {
-        $url = '/_matrix/client/r0/createRoom?user_id=' . urlencode($creator->id);
+        $url = '/_matrix/client/r0/createRoom?user_id=' . urlencode($creator->id) . '&ts=' . ($ts->format('U') * 1000);
         $data = new stdClass();
         $data->visibility = 'private';
         $data->name = $name;
@@ -45,18 +45,18 @@ class MatrixClient
         return $result->room_id;
     }
 
-    public function invite(Room $room, User $user)
+    public function invite(Room $room, User $user, DateTime $ts)
     {
         $creator = User::getByUid($room->creator_uid);
-        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/invite?user_id=' . $creator->id;
+        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/invite?user_id=' . $creator->id . '&ts=' . ($ts->format('U') * 1000);
         $data = new stdClass();
         $data->user_id = $user->id;
         $this->http->post($url, $data);
     }
 
-    public function join(Room $room, User $user)
+    public function join(Room $room, User $user, DateTime $ts)
     {
-        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/join?user_id=' . urlencode($user->id);
+        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/join?user_id=' . urlencode($user->id) . '&ts=' . ($ts->format('U') * 1000);
         $data  = new stdClass();
         $this->http->post($url, $data);
     }
@@ -65,7 +65,7 @@ class MatrixClient
     {
         //TODO how to store historical messages with $ts
         $uid = md5($message->getHeaderValue(HeaderConsts::MESSAGE_ID));
-        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->id);
+        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->id) . '&ts=' . ($ts->format('U') * 1000);
 
         $data = new stdClass();
         $data->msgtype = 'm.text';
@@ -80,16 +80,16 @@ class MatrixClient
             $type = $attachment->getHeaderValue(HeaderConsts::CONTENT_TYPE);
             $name = $attachment->getHeaderParameter(HeaderConsts::CONTENT_TYPE, 'name') ?? uniqid();
 
-            $this->upload($room, $from, $uid."+$i", $attachment->getContentStream(), $name, $type);
+            $this->upload($room, $from, $uid."+$i", $attachment->getContentStream(), $name, $type, $ts);
         }
     }
 
-    public function upload(Room $room, User $from, string $uid, $stream, string $name, string $type)
+    public function upload(Room $room, User $from, string $uid, $stream, string $name, string $type, DateTime $ts)
     {
         $url = '/_matrix/media/r0/upload?filename=' . urlencode($name);
         $result = $this->http->postStream($url, $type, $stream);
 
-        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->id);
+        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->id) . '&ts=' . ($ts->format('U') * 1000);
         $data = new stdClass();
         $data->msgtype = 'm.file';
         $data->body = $name;

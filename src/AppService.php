@@ -121,8 +121,7 @@ class AppService
             Room::getOneBy(['id' => $event->room_id]);
         } catch (NotFoundException $e) {
             $creator = User::getOneBy($event->user_id);
-            $id = $this->client->createRoom('', $creator);
-            Room::create($id, '', $creator);
+            Room::create($event->room_id, '', $creator);
         }
     }
 

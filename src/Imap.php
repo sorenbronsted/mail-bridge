@@ -118,15 +118,15 @@ class Imap
         }
         catch(NotFoundException $e) {
             $result = User::create($user->getName(), $user->getEmail(), $this->config->domain);
-            $this->client->createUser($result);
+            $this->client->createUser($result, $this->ts->getDateTime());
         }
         return $result;
     }
 
     private function addUser(Room $room, User $user)
     {
-        $this->client->invite($room, $user);
-        $this->client->join($room, $user);
+        $this->client->invite($room, $user, $this->ts->getDateTime());
+        $this->client->join($room, $user, $this->ts->getDateTime());
         $member = new Member($room->uid, $user->uid);
         $member->save();
     }
@@ -146,7 +146,7 @@ class Imap
                 }
             }
         } catch (NotFoundException $e) {
-            $id = $this->client->createRoom($this->subject, $this->from);
+            $id = $this->client->createRoom($this->subject, $this->from, $this->ts->getDateTime());
             $room = Room::create($id, $this->subject, $this->from);
             //TODO $this->user shall have the same power as the creator
             foreach ($this->to->getAddresses() as $address) {
@@ -168,7 +168,7 @@ class Imap
             }
             $room = Room::getOneBy(['name' => $name]);
         } catch (NotFoundException $e) {
-            $id = $this->client->createRoom($name, $this->from);
+            $id = $this->client->createRoom($name, $this->from, $this->ts->getDateTime());
             $room = Room::create($id, $name, $this->from);
         }
         return $room;
