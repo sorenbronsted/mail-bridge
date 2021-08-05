@@ -2,11 +2,11 @@
 
 namespace bronsted;
 
-class AppServerConfig
+class AppServiceConfig
 {
     public string $baseUrl;
-    public string $tokenAppServer;
-    public string $tokenHomeServer;
+    public string $tokenMine;
+    public string $tokenGuest;
     public string $domain;
     public string $key;
     public string $storeInbox;

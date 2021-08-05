@@ -1,18 +1,21 @@
+Alle P1 skal laves inden egen drift:
 
-plan
- + skaffe nogle mails
- + indlæse mails i synapsen
- + håndterer attachments
- + se på reactphp for web og schedulering ( det er svært, check php swoole, eller cron til schedulering)
- + teste performance på et apache/php setting, lige nu er det begrænset (søg hacks)
-   Har løst performance problemet, som lå i at vente på at en invite blev besvar besvaret af en join (auto join)
-   Dette er ikke nødvendigt, da en appservice bare sender en invite og en join.
- + implementere upload
- + send email
- + sende mail fra et nyt rum og ny bruger
- - registrer en imap konto hos denne appservice
- - håndterer mail bounce - tror bare kan slette den
- + import se https://github.com/matrix-org/matrix-doc/blob/17e0ef4b91034b0cdb010416225ffac65b4107fc/specification/application_service_api.rst#232timestamp-massaging
-   - dvs at ved alle kald skal denne ts parameter være på og det er unix ts i millisecond!
-   - https://www.epochconverter.com/
+P1:
+ + Muligvis fejl ved direkte beskeder, fx jobindex er ene medlem af et rum - modtageren mangler
+ + Søg efter TODO P1
+ - et cron job:
+    - som henter nye mails og gemmer dem i folderen inbox
+    - som importer mails fra folderen inbox til matrix, og som slettes ved ok og ved fejl flyttes til inbox/fail
+    - som sender de mails der ligger i outbox, og som slettes ved ok og ved fejl flyttes til outbox/fail
+    + der må kun kører 1 job ad gangen, så der tjekkes for om det allerede kører
+    - overvågning af cron job
+    - overvågning af fejl
+
+P2:
+ - Søg efter TODO P2
+ - tests
+ - tagge mails sendt fra denne appservice, så de kan genkendes igen
+ - import at ældre mails skal ske fra inbox og sent mapperne, så dialogen kan følges.
+ - i stedet for cron job kan php swoole måske bruges
+
 

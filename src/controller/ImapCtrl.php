@@ -2,83 +2,86 @@
 namespace bronsted;
 
 use DateTime;
-use PHPMailer\PHPMailer\PHPMailer;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\Header\DateHeader;
 use ZBateson\MailMimeParser\Header\HeaderConsts;
 use ZBateson\MailMimeParser\Header\Part\AddressPart;
 use ZBateson\MailMimeParser\Message;
 
-class Imap
+class ImapCtrl
 {
     private AddressHeader $to;
     private User $from;
     private MatrixClient $client;
     private Message $message;
     private DateHeader $ts;
-    private AppServerConfig $config;
+    private AppServiceConfig $config;
+    private Imap $mail;
+    private File $file;
+    private Smtp $smtp;
 
-    public function __construct(AppServerConfig $config, MatrixClient $client)
+    public function __construct(AppServiceConfig $config, MatrixClient $client, Imap $mail, File $file, Smtp $smtp)
     {
         $this->config = $config;
         $this->client = $client;
+        $this->mail   = $mail;
+        $this->file   = $file;
+        $this->smtp   = $smtp;
+
+        $this->file->root($config->storeInbox);
     }
 
-    public function fetch(DateTime $stop)
+    public function fetch(Account $account, DateTime $stop)
     {
-        $users = User::getNonePuppets();
-        foreach($users as $user) {
-            $account = Account::getOneBy(['user_uid' => $user->uid])->getContent($this->config);
-            $connection = imap_open($account->server, $account->user, $account->password);
+        $accountData = $account->getContent($this->config);
+        $this->mail->open($accountData);
 
-            if (!file_exists($this->config->storeInbox)) {
-                mkdir($this->config->storeInbox, 0664, true);
+        // sort mailbox by date in reverse order
+        $this->mail->sort(SORTDATE, true);
+
+        $max = $this->mail->count();
+        for($i = 1; $i <= $max; $i++) {
+            $header = $this->mail->header($i);
+            if ($header->udate < $stop->format('U')) {
+                break;
             }
-
-            // sort mailbox by date in reverse order
-            imap_sort($connection, SORTDATE, true);
-
-            $max = imap_num_msg($connection);
-
-            for($i = 1; $i <= $max; $i++) {
-                $header = (object)imap_fetch_overview($connection, $i);
-                if ($header->udate < $stop->format('U')) {
-                    break;
-                }
-                $filename = uniqid() . '.mime';
-                $source = imap_fetchheader($connection, $i) . imap_body($connection, $i);
-                file_put_contents($this->config->storeInbox . '/' . $filename, $source);
-            }
-            imap_close($connection);
+            $filename = uniqid() . '.mime';
+            $message = $this->mail->message($i);
+            $this->file->write($filename, $message);
         }
+        $this->mail->close();
     }
 
-    public function send(User $sender, DbCursor $recipients, string $subject, string $message, array $attachments = [])
+    public function canConnect(ImapAccount $accountData)
     {
-        //TODO config is per user
-        $mail = new PHPMailer(true);
-        $mail->isSMTP();
-        $mail->Host = 'localhost';
-        $mail->Port = 1025;
+        // Throws an exception if not working
+        $this->mail->open($accountData);
+        $this->mail->close();
 
-        $mail->setFrom($sender->email, $sender->name);
-        foreach($recipients as $recipient) {
-            $mail->addAddress($recipient->email, $recipient->name);
-        }
-        $mail->Subject = $subject;
-        $mail->Body = $message;
-
-        $mail->send();
+        $this->smtp->open($accountData);
+        $this->smtp->close();
     }
 
-    public function import($fh)
+    public function sendMessage(User $sender, DbCursor $recipients, string $subject, string $text, string $html = '')
+    {
+        $account = Account::getOneBy(['user_uid' => $sender->uid]);
+        $accountData = $account->getContent($this->config);
+        $this->smtp->open($accountData);
+        $this->smtp->from($sender);
+        $this->smtp->addRecipients($recipients);
+        $this->smtp->subject($subject);
+        $this->smtp->body($text, $html);
+        $this->smtp->send();
+    }
+
+    public function import(Account $account, $fh)
     {
         $this->parse($fh);
 
         if (count($this->to->getAddresses()) > 1) {
-            $room = $this->getOrCreateMultiUserRoom();
+            $room = $this->getOrCreateMultiUserRoom($account);
         } else {
-            $room = $this->getOrCreateDirectUserRoom();
+            $room = $this->getOrCreateDirectUserRoom($account);
         }
 
         $this->client->send($room, $this->from, $this->message, $this->ts->getDateTime());
@@ -131,7 +134,7 @@ class Imap
         $member->save();
     }
 
-    private function getOrCreateMultiUserRoom(): Room
+    private function getOrCreateMultiUserRoom(Account $account): Room
     {
         $room = null;
         try {
@@ -148,16 +151,21 @@ class Imap
         } catch (NotFoundException $e) {
             $id = $this->client->createRoom($this->subject, $this->from, $this->ts->getDateTime());
             $room = Room::create($id, $this->subject, $this->from);
-            //TODO $this->user shall have the same power as the creator
             foreach ($this->to->getAddresses() as $address) {
                 $member = $this->getOrCreateUser($address);
                 $this->addUser($room, $member);
             }
         }
+
+        // Ensure that current account is allways a member
+        $user = User::getByUid($account->user_uid);
+        if (!$room->hasMember($user)) {
+            $room->join($user);
+        }
         return $room;
     }
 
-    private function getOrCreateDirectUserRoom(): Room
+    private function getOrCreateDirectUserRoom(Account $account): Room
     {
         $room = null;
         $name = null;
@@ -170,6 +178,8 @@ class Imap
         } catch (NotFoundException $e) {
             $id = $this->client->createRoom($name, $this->from, $this->ts->getDateTime());
             $room = Room::create($id, $name, $this->from);
+            $user = User::getByUid($account->user_uid);
+            $this->addUser($room, $user);
         }
         return $room;
     }

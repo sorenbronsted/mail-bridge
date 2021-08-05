@@ -10,19 +10,17 @@ use Symfony\Component\HttpClient\Psr18Client;
 class Http
 {
     private HttpClient $client;
-    public AppServerConfig $config;
+    public AppServiceConfig $config;
 
-    public function __construct(AppServerConfig $config, HttpClient $client)
+    public function __construct(AppServiceConfig $config, HttpClient $client)
     {
         $this->client = $client;
         $this->config = $config;
-        $this->header = ['Authorization' => 'Bearer ' . $config->tokenAppServer];
+        $this->header = ['Authorization' => 'Bearer ' . $config->tokenMine];
     }
 
     public function postStream(string $url, string $contentType, $stream): stdClass
     {
-        //TODO: https://matrix.org/docs/spec/client_server/latest#post-matrix-media-r0-upload og HttpClient
-
         $requestFactory = new Psr18Client();
         $request = $requestFactory->createRequest('POST', $this->config->baseUrl . $url);
         foreach (array_merge($this->header, ['Content-Type' => $contentType]) as $name => $value) {
@@ -39,12 +37,12 @@ class Http
         return json_decode($response->getBody()->getContents());
     }
 
-    public function post(string $url, stdClass $data, array $additional = []): stdClass
+    public function post(string $url, stdClass $data, array $additionalHeaders = []): stdClass
     {
-        $response = $this->client->post($this->config->baseUrl . $url, (array)$data, array_merge($this->header, $additional));
+        $response = $this->client->post($this->config->baseUrl . $url, (array)$data, array_merge($this->header, $additionalHeaders));
         $code = $response->getStatusCode();
         if ($code != 200) {
-            throw new Exception("Http request message failed with: " . $code);
+            throw new Exception("Request failed: " . $url, $code);
         }
         return json_decode($response->getBody()->getContents());
     }
@@ -54,14 +52,14 @@ class Http
         $response = $this->client->put($this->config->baseUrl . $url, (array)$data, $this->header);
         $code = $response->getStatusCode();
         if ($code != 200) {
-            throw new Exception("Http request message failed with: " . $code);
+            throw new Exception("Request failed: " . $url,  $code);
         }
         return json_decode($response->getBody()->getContents());
     }
 
     public function get(string $url): stdClass
     {
-        $response = $this->client->get($this->config->baseUrl. $url, $this->header);
+        $response = $this->client->get($this->config->baseUrl . $url, $this->header);
         $code = $response->getStatusCode();
         if ($code != 200) {
             throw new Exception("Request failed: " . $url, $code);

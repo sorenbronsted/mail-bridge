@@ -2,9 +2,21 @@
 
 namespace bronsted;
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+use Exception;
+use Psr\Log\LoggerInterface;
+use Slim\ResponseEmitter;
 
+require '../vendor/autoload.php';
 
-$app = bootstrap();
+try {
+    $app = bootstrap();
+    $app->run();
+} catch (Exception $e) {
+    $log = $app->getContainer()->get(LoggerInterface::class);
+    $log->error($e->getMessage());
+    $log->error($e->getTraceAsString());
 
-$app->run();
+    $response = $app->getResponseFactory()->createResponse(500);
+    $responseEmitter = new ResponseEmitter();
+    $responseEmitter->emit($response);
+}

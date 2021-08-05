@@ -3,6 +3,8 @@
 namespace bronsted;
 
 use DateTime;
+use HTMLPurifier;
+use HTMLPurifier_Config;
 use stdClass;
 use ZBateson\MailMimeParser\Header\HeaderConsts;
 use ZBateson\MailMimeParser\Message;
@@ -40,6 +42,7 @@ class MatrixClient
         $url = '/_matrix/client/r0/createRoom?user_id=' . urlencode($creator->id) . '&ts=' . ($ts->format('U') * 1000);
         $data = new stdClass();
         $data->visibility = 'private';
+        $data->preset = 'trusted_private_chat';
         $data->name = $name;
         $result = $this->http->post($url, $data);
         return $result->room_id;
@@ -63,7 +66,6 @@ class MatrixClient
 
     public function send(Room $room, User $from, Message $message, DateTime $ts)
     {
-        //TODO how to store historical messages with $ts
         $uid = md5($message->getHeaderValue(HeaderConsts::MESSAGE_ID));
         $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->id) . '&ts=' . ($ts->format('U') * 1000);
 
@@ -71,7 +73,7 @@ class MatrixClient
         $data->msgtype = 'm.text';
         $data->body = $message->getTextContent() ?? strip_tags($message->getHtmlContent());
         $data->format = 'org.matrix.custom.html';
-        $data->formatted_body = $message->getHtmlContent() ?? '';
+        $data->formatted_body = $this->sanitize($message->getHtmlContent()) ?? '';
         $data->sender = $from->id;
         $this->http->put($url, $data);
 
@@ -95,5 +97,22 @@ class MatrixClient
         $data->body = $name;
         $data->url = $result->content_uri;
         $this->http->put($url, $data);
+    }
+
+    private function sanitize(?string $html = ''): string
+    {
+        if (empty(trim($html))) {
+            return '';
+        }
+        // taken from https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes
+        $allowedTags = "font,del,h1,h2,h3,h4,h5,h6,blockquote,p,".
+            "a[name|target|href],ul,ol[start],sup,sub,li,b,i,u,strong,em,strike,".
+            "code[class],hr,br,div,table,thead,tbody,tr,th,td,caption,pre,span,img[width|height|alt|title|src]";
+
+        //TODO P2 ensure that javascript on events is stripped off
+        $config = HTMLPurifier_Config::createDefault();
+        $config->set('HTML.Allowed', $allowedTags);
+        $cleaner = new HTMLPurifier($config);
+        return $cleaner->purify($html);
     }
 }

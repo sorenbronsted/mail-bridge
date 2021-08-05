@@ -62,15 +62,6 @@ class Crypto
             throw new Exception('The encoding failed');
         }
 
-        // check for incomplete message. CRYPTO_SECRETBOX_MACBYTES doesn't seem to exist in this version...
-        if (!defined('CRYPTO_SECRETBOX_MACBYTES')) {
-            define('CRYPTO_SECRETBOX_MACBYTES', 16);
-        }
-
-        if (mb_strlen($decoded, '8bit') < (SODIUM_CRYPTO_SECRETBOX_NONCEBYTES + CRYPTO_SECRETBOX_MACBYTES)) {
-            throw new Exception('The message was truncated');
-        }
-
         // pull nonce and ciphertext out of unpacked message
         $nonce = mb_substr($decoded, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES, '8bit');
         $ciphertext = mb_substr($decoded, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES, null, '8bit');
@@ -85,7 +76,7 @@ class Crypto
 
         // cleanup
         sodium_memzero($ciphertext);
-        sodium_memzero($secret_key);
+        sodium_memzero($key);
 
         return $message;
     }

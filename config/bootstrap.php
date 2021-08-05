@@ -12,10 +12,9 @@ function bootstrap(): App
     $container = new Container();
     logging($container);
     database();
-    user($container);
     client($container);
 
-    appServer($container);
+    appService($container);
 
     AppFactory::setContainer($container);
     $app = AppFactory::create();
@@ -26,6 +25,8 @@ function bootstrap(): App
         return json_decode($input);
     }]);
 
+    mail($container);
+    file($container);
     routes($app);
 
     return $app;

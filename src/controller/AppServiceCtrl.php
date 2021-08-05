@@ -9,23 +9,22 @@ use Slim\Psr7\Response;
 use stdClass;
 use Throwable;
 
-class AppService
+class AppServiceCtrl
 {
-    private AppServerConfig $config;
+    private AppServiceConfig $config;
     private LoggerInterface $log;
-    private Imap $imap;
-    private MatrixClient $client;
+    private ImapCtrl $imap;
 
-    public function __construct(LoggerInterface $log, AppServerConfig $source, Imap $imap, MatrixClient $client)
+    public function __construct(LoggerInterface $log, AppServiceConfig $source, ImapCtrl $imap)
     {
         $this->log = $log;
         $this->config = $source;
         $this->imap = $imap;
-        $this->client = $client;
     }
 
     public function events(Request $request, Response $response, array $args): MessageInterface
     {
+        $this->validateCredentials($request);
         $data = (object)$request->getParsedBody();
         $args = (object)$args;
 
@@ -41,8 +40,8 @@ class AppService
 
     public function hasUser(Request $request, Response $response, array $args): MessageInterface
     {
-        $args = (object)$args;
         $this->validateCredentials($request);
+        $args = (object)$args;
         try {
             User::getOneBy(['id' => $args->userId]);
             $response->getBody()->write('{}');
@@ -54,10 +53,52 @@ class AppService
 
     public function hasRoom(Request $request, Response $response, array $args): MessageInterface
     {
-        $args = (object)$args;
         $this->validateCredentials($request);
+        $args = (object)$args;
         try {
             Room::getOneBy(['alias' => $args->roomAlias]);
+            $response->getBody()->write('{}');
+            return $response->withHeader('Content-Type', 'application/json');
+        } catch (NotFoundException $e) {
+            return $response->withStatus(404);
+        }
+    }
+
+    public function hasAccount(Request $request, Response $response, array $args): MessageInterface
+    {
+        $this->validateCredentials($request);
+        $args = (object)$args;
+        try {
+            $user = User::getOneBy(['id' => $args->userId]);
+            Account::getOneBy(['user_uid' => $user->uid]);
+            $response->getBody()->write('{}');
+            return $response->withHeader('Content-Type', 'application/json');
+        } catch (NotFoundException $e) {
+            return $response->withStatus(404);
+        }
+    }
+
+    public function addAccount(Request $request, Response $response, array $args): MessageInterface
+    {
+        //TODO P2 credentials should be the user token and verified against synapse
+        $this->validateCredentials($request);
+        $args = (object)$args;
+
+        try {
+            $imapData = ImapAccount::parse($request->getParsedBody());
+            $user = User::getOneBy(['id' => $args->userId]);
+            $this->imap->canConnect($imapData);
+
+            $account = null;
+            if (Account::exists($user)) {
+                $account = Account::getOneBy(['user_uid' => $user->uid]);
+            }
+            else {
+                $account = new Account();
+                $account->user_uid = $user->uid;
+            }
+            $account->setContent($this->config, $imapData);
+            $account->save();
             $response->getBody()->write('{}');
             return $response->withHeader('Content-Type', 'application/json');
         } catch (NotFoundException $e) {
@@ -73,7 +114,7 @@ class AppService
             throw new CredentialException('Missing token', 401);
         }
         //403 = wrong credentials
-        if ($args->access_token != $this->config->tokenHomeServer) {
+        if ($args->access_token != $this->config->tokenGuest) {
             throw new CredentialException('Wrong token', 403);
         }
     }
@@ -94,7 +135,7 @@ class AppService
                 continue;
             }
 
-            if ($this->isPuppet($event->user_id)) {
+            if (User::isPuppet($event->user_id)) {
                 continue;
             }
 
@@ -120,7 +161,7 @@ class AppService
         try {
             Room::getOneBy(['id' => $event->room_id]);
         } catch (NotFoundException $e) {
-            $creator = User::getOneBy($event->user_id);
+            $creator = User::getOneBy(['id' => $event->user_id]);
             Room::create($event->room_id, '', $creator);
         }
     }
@@ -137,7 +178,7 @@ class AppService
 
     private function roomMember(stdClass $event)
     {
-        if ($event->content->membership == 'invite' && $this->isPuppet($event->state_key)) {
+        if ($event->content->membership == 'invite' && User::isPuppet($event->state_key)) {
             $user = null;
             $room = Room::getOneBy(['id' => $event->room_id]);
             try {
@@ -164,15 +205,15 @@ class AppService
 
         $room = Room::getOneBy(['id' => $event->room_id]);
         $recipients = $room->getMailRecipients($sender);
-        // TODO html body and attachments
         if ($event->content->msgtype == 'm.text') {
-            $this->imap->send($sender, $recipients, $room->name, $event->content->body);
+            $this->imap->sendMessage($sender, $recipients, $room->name, $event->content->body, $event->content->formatted_body ?? '');
         }
-    }
-
-    private function isPuppet($id): bool
-    {
-        $prefix = '@mail_';
-        return substr($id, 0, strlen($prefix)) == $prefix;
+        else if (isset($event->content->url)) {
+            //TODO P2 better handling of url types https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes
+            $this->imap->sendMessage($sender, $recipients, $room->name, $event->content->url);
+        }
+        else {
+            Log::error("Can't handle message type: " . $event->content->msgtype);
+        }
     }
 }
