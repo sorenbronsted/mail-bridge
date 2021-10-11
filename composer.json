@@ -43,7 +43,9 @@
         "nyholm/psr7": "^1.4",
         "symfony/http-client": "^5.3",
         "phpmailer/phpmailer": "^6.5",
-        "ezyang/htmlpurifier": "^4.13"
+        "ezyang/htmlpurifier": "^4.13",
+        "ruckusing/ruckusing-migrations": "^1.1",
+        "hansott/psr7-cookies": "^3.0"
     },
     "repositories": [{
         "type": "path",
