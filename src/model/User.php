@@ -50,7 +50,7 @@ class User extends ModelObject
         return substr($this->id, 1, strpos($this->id, ':') - 1);
     }
 
-    public static function isPuppet($id): bool
+    public static function isPuppet(string $id): bool
     {
         return substr($id, 0, strlen(self::PUPPET_PREFIX)) == self::PUPPET_PREFIX;
     }

@@ -2,6 +2,7 @@
 namespace bronsted;
 
 use DateTime;
+use stdClass;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\Header\DateHeader;
 use ZBateson\MailMimeParser\Header\HeaderConsts;
@@ -52,7 +53,7 @@ class ImapCtrl
         $this->mail->close();
     }
 
-    public function canConnect(ImapAccount $accountData)
+    public function canConnect(stdClass $accountData)
     {
         // Throws an exception if not working
         $this->mail->open($accountData);
@@ -150,7 +151,7 @@ class ImapCtrl
             }
         } catch (NotFoundException $e) {
             $id = $this->client->createRoom($this->subject, $this->from, $this->ts->getDateTime());
-            $room = Room::create($id, $this->subject, $this->from);
+            $room = Room::create($id, $this->subject, $this->from, $account);
             foreach ($this->to->getAddresses() as $address) {
                 $member = $this->getOrCreateUser($address);
                 $this->addUser($room, $member);
@@ -177,7 +178,7 @@ class ImapCtrl
             $room = Room::getOneBy(['name' => $name]);
         } catch (NotFoundException $e) {
             $id = $this->client->createRoom($name, $this->from, $this->ts->getDateTime());
-            $room = Room::create($id, $name, $this->from);
+            $room = Room::create($id, $name, $this->from, $account);
             $user = User::getByUid($account->user_uid);
             $this->addUser($room, $user);
         }

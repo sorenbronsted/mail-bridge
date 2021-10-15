@@ -2,24 +2,29 @@
 
 empty:
 	rm db/db.sqlite
-	sqlite3 db/db.sqlite < db/create.sql
+
+migrate:
+	vendor/bin/ruckus.php db:migrate
 
 permissions:
 	chmod 664 db/db.sqlite
-	chgrp www-data db/db.sqlite
+	chown sobr:www-data db/db.sqlite
 
 serve:
 	php -S 0.0.0.0:8001 -t public
 
+debug:
+	export XDEBUG_MODE=debug;php -S 0.0.0.0:8001 -t public
+
 import:
-	php src/cli/imap_parse.php
+	php src/cli/imap_import.php
 
 test:
 	vendor/bin/phpunit
 
 coverage:
-	vendor/bin/phpunit --coverage-text
+	export XDEBUG_MODE=coverage;vendor/bin/phpunit --coverage-text
 
 coverage-report:
-	vendor/bin/phpunit --coverage-html build
+	export XDEBUG_MODE=coverage;vendor/bin/phpunit --coverage-html build
 

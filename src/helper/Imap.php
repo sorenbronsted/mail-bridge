@@ -34,7 +34,7 @@ class Imap
         $this->close();
     }
 
-    public function open(ImapAccount $account)
+    public function open(stdClass $account)
     {
         if ($this->connection == null) {
             $this->connection = imap_open($account->imap_server, $account->user, $account->password);
@@ -49,6 +49,7 @@ class Imap
     {
         if ($this->connection) {
             imap_close($this->connection);
+            $this->connection = null;
         }
     }
 

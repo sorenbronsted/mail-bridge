@@ -3,8 +3,8 @@
 namespace bronsted;
 
 use DI\Container;
+use DI\Bridge\Slim\Bridge;
 use Slim\App;
-use Slim\Factory\AppFactory;
 use Slim\Middleware\ContentLengthMiddleware;
 
 function bootstrap(): App
@@ -16,8 +16,7 @@ function bootstrap(): App
 
     appService($container);
 
-    AppFactory::setContainer($container);
-    $app = AppFactory::create();
+    $app = Bridge::create($container);
 
     $app->add(new ContentLengthMiddleware());
     $app->addRoutingMiddleware();

@@ -5,7 +5,6 @@ namespace bronsted;
 use DI\Container;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
-use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
 function logging(Container $container)

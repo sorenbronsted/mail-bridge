@@ -2,6 +2,8 @@
 
 namespace bronsted;
 
+use stdClass;
+
 class AccountTest extends TestCase
 {
     public function testContent()
@@ -13,8 +15,7 @@ class AccountTest extends TestCase
         $this->assertEmpty($account->data);
         $this->assertEmpty($account->getContent($config));
 
-        $fixture = new ImapAccount();
-        $fixture->imap_url = 'some url';
+        $fixture = Fixtures::imapData();
         $account->setContent($config, $fixture);
         $account->save();
 

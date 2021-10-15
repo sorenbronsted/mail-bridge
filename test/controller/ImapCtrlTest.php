@@ -21,7 +21,7 @@ class ImapCtrlTest extends TestCase
 
         $this->config = $this->container->get(AppServiceConfig::class);
         $this->account = Fixtures::account($this->user);
-        $this->account->setContent($this->config, Fixtures::imapAccount());
+        $this->account->setContent($this->config, Fixtures::imapData());
         $this->account->save();
     }
 

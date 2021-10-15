@@ -9,7 +9,7 @@ require dirname(dirname(__DIR__)) . '/vendor/autoload.php';
 
 function send()
 {
-
+    // This happens on the fly
 }
 
 function fetch()

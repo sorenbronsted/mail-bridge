@@ -3,47 +3,37 @@
 namespace bronsted;
 
 use Psr\Http\Message\MessageInterface;
-use Psr\Log\LoggerInterface;
-use Slim\Psr7\Request;
-use Slim\Psr7\Response;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use stdClass;
 use Throwable;
 
 class AppServiceCtrl
 {
-    private AppServiceConfig $config;
-    private LoggerInterface $log;
     private ImapCtrl $imap;
 
-    public function __construct(LoggerInterface $log, AppServiceConfig $source, ImapCtrl $imap)
+    public function __construct(ImapCtrl $imap)
     {
-        $this->log = $log;
-        $this->config = $source;
         $this->imap = $imap;
     }
 
-    public function events(Request $request, Response $response, array $args): MessageInterface
+    public function events(ServerRequestInterface $request, ResponseInterface $response, string $txnId): MessageInterface
     {
-        $this->validateCredentials($request);
         $data = (object)$request->getParsedBody();
-        $args = (object)$args;
-
         try {
-            $this->consumeEvents($args->txnId, $data);
+            $this->consumeEvents($txnId, $data);
         } catch (Throwable $t) {
-            $this->log->error($t->getMessage());
+            Log::error($t->getMessage());
         }
 
         $response->getBody()->write(json_encode(new stdClass()));
         return $response->withHeader('Content-Type', 'application/json');
     }
 
-    public function hasUser(Request $request, Response $response, array $args): MessageInterface
+    public function hasUser(ResponseInterface $response, string $userId): MessageInterface
     {
-        $this->validateCredentials($request);
-        $args = (object)$args;
         try {
-            User::getOneBy(['id' => $args->userId]);
+            User::getOneBy(['id' => $userId]);
             $response->getBody()->write('{}');
             return $response->withHeader('Content-Type', 'application/json');
         } catch (NotFoundException $e) {
@@ -51,71 +41,14 @@ class AppServiceCtrl
         }
     }
 
-    public function hasRoom(Request $request, Response $response, array $args): MessageInterface
+    public function hasRoom(ResponseInterface $response, string $roomAlias): MessageInterface
     {
-        $this->validateCredentials($request);
-        $args = (object)$args;
         try {
-            Room::getOneBy(['alias' => $args->roomAlias]);
+            Room::getOneBy(['alias' => $roomAlias]);
             $response->getBody()->write('{}');
             return $response->withHeader('Content-Type', 'application/json');
         } catch (NotFoundException $e) {
             return $response->withStatus(404);
-        }
-    }
-
-    public function hasAccount(Request $request, Response $response, array $args): MessageInterface
-    {
-        $this->validateCredentials($request);
-        $args = (object)$args;
-        try {
-            $user = User::getOneBy(['id' => $args->userId]);
-            Account::getOneBy(['user_uid' => $user->uid]);
-            $response->getBody()->write('{}');
-            return $response->withHeader('Content-Type', 'application/json');
-        } catch (NotFoundException $e) {
-            return $response->withStatus(404);
-        }
-    }
-
-    public function addAccount(Request $request, Response $response, array $args): MessageInterface
-    {
-        //TODO P2 credentials should be the user token and verified against synapse
-        $this->validateCredentials($request);
-        $args = (object)$args;
-
-        try {
-            $imapData = ImapAccount::parse($request->getParsedBody());
-            $user = User::getOneBy(['id' => $args->userId]);
-            $this->imap->canConnect($imapData);
-
-            $account = null;
-            if (Account::exists($user)) {
-                $account = Account::getOneBy(['user_uid' => $user->uid]);
-            }
-            else {
-                $account = new Account();
-                $account->user_uid = $user->uid;
-            }
-            $account->setContent($this->config, $imapData);
-            $account->save();
-            $response->getBody()->write('{}');
-            return $response->withHeader('Content-Type', 'application/json');
-        } catch (NotFoundException $e) {
-            return $response->withStatus(404);
-        }
-    }
-
-    private function validateCredentials(Request $request)
-    {
-        $args = (object)$request->getQueryParams();
-        //401 = missing credentials
-        if (!isset($args->access_token)) {
-            throw new CredentialException('Missing token', 401);
-        }
-        //403 = wrong credentials
-        if ($args->access_token != $this->config->tokenGuest) {
-            throw new CredentialException('Wrong token', 403);
         }
     }
 

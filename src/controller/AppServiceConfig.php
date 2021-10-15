@@ -6,7 +6,7 @@ class AppServiceConfig
 {
     public string $baseUrl;
     public string $tokenMine;
-    public string $tokenGuest;
+    public array  $tokenGuest;
     public string $domain;
     public string $key;
     public string $storeInbox;

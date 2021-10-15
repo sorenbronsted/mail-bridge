@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a14e6f990a1f49bfe1c09c36c1c0b98e",
+    "content-hash": "703a63116e529f48b4b1611eec8d57ee",
     "packages": [
         {
             "name": "bronsted/orm",
@@ -829,6 +829,47 @@
                 "source": "https://github.com/PHP-DI/PhpDocReader/tree/2.2.1"
             },
             "time": "2020-10-12T12:39:22+00:00"
+        },
+        {
+            "name": "php-di/slim-bridge",
+            "version": "3.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PHP-DI/Slim-Bridge.git",
+                "reference": "ad74ba03a3b97c717d58ac04b88671bafe4549c7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PHP-DI/Slim-Bridge/zipball/ad74ba03a3b97c717d58ac04b88671bafe4549c7",
+                "reference": "ad74ba03a3b97c717d58ac04b88671bafe4549c7",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.1 || ^8.0",
+                "php-di/invoker": "^2.0.0",
+                "php-di/php-di": "^6.0.0",
+                "slim/slim": "^4.2.0"
+            },
+            "require-dev": {
+                "laminas/laminas-diactoros": "^2.1",
+                "phpunit/phpunit": ">= 7.0 < 10"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "DI\\Bridge\\Slim\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "PHP-DI integration in Slim",
+            "support": {
+                "issues": "https://github.com/PHP-DI/Slim-Bridge/issues",
+                "source": "https://github.com/PHP-DI/Slim-Bridge/tree/3.1.1"
+            },
+            "time": "2021-05-26T19:35:50+00:00"
         },
         {
             "name": "php-http/message-factory",

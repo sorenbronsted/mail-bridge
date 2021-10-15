@@ -3,12 +3,13 @@
 namespace bronsted;
 
 use PHPMailer\PHPMailer\PHPMailer;
+use stdClass;
 
 class Smtp
 {
     private $mailer;
 
-    public function open(ImapAccount $account)
+    public function open(stdClass $account)
     {
         $this->mailer = new PHPMailer(true);
         $this->mailer->isSMTP();

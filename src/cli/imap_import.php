@@ -31,5 +31,6 @@ for ($i = 1; $i <= 100; $i++) {
     } finally {
         fclose($fh);
     }
+    exit(); // Only one
 }
 echo PHP_EOL;

@@ -10,23 +10,23 @@ class AppServiceCtrlTest extends TestCase
     {
         $user = Fixtures::user();
         $req = $this->createRequest('GET', '/users/' . urlencode($user->id) . '?access_token=' . urlencode('not_valid'));
-        $this->expectExceptionCode(403);
         $resp = $this->app->handle($req);
+        $this->assertEquals(401, $resp->getStatusCode());
     }
 
     public function testMissingCredentials()
     {
         $user = Fixtures::user();
         $req = $this->createRequest('GET', '/users/' . urlencode($user->id));
-        $this->expectExceptionCode(401);
         $resp = $this->app->handle($req);
+        $this->assertEquals(403, $resp->getStatusCode());
     }
 
     public function testHasUserOk()
     {
         $user = Fixtures::user();
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/users/' . urlencode($user->id) . '?access_token=' . urlencode($config->tokenGuest));
+        $req = $this->createRequest('GET', '/users/' . urlencode($user->id) . '?access_token=' . urlencode($config->tokenGuest[0]));
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $this->assertJsonData((object)[], $resp);
@@ -35,7 +35,7 @@ class AppServiceCtrlTest extends TestCase
     public function testHasUserFail()
     {
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/users/' . urlencode('@1') . '?access_token=' . urlencode($config->tokenGuest));
+        $req = $this->createRequest('GET', '/users/' . urlencode('@1') . '?access_token=' . urlencode($config->tokenGuest[0]));
         $resp = $this->app->handle($req);
         $this->assertEquals(404, $resp->getStatusCode());
     }
@@ -44,7 +44,7 @@ class AppServiceCtrlTest extends TestCase
     {
         $room = Fixtures::room();
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/rooms/' . urlencode($room->alias) . '?access_token=' . urlencode($config->tokenGuest));
+        $req = $this->createRequest('GET', '/rooms/' . urlencode($room->alias) . '?access_token=' . urlencode($config->tokenGuest[0]));
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $this->assertJsonData((object)[], $resp);
@@ -53,70 +53,9 @@ class AppServiceCtrlTest extends TestCase
     public function testHasRoomFail()
     {
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/rooms/' . urlencode('unknown') . '?access_token=' . urlencode($config->tokenGuest));
+        $req = $this->createRequest('GET', '/rooms/' . urlencode('unknown') . '?access_token=' . urlencode($config->tokenGuest[0]));
         $resp = $this->app->handle($req);
         $this->assertEquals(404, $resp->getStatusCode());
-    }
-
-    public function testHasAccount()
-    {
-        $user = Fixtures::user();
-        $account = Fixtures::account($user);
-        $config = $this->container->get(AppServiceConfig::class);
-        $account->setContent($config, Fixtures::imapAccount());
-        $imap = $this->mock(ImapCtrl::class);
-        $imap->method('canConnect');
-
-        $imapData = new stdClass();
-        $imapData->imap_url = '1';
-        $imapData->smtp_host = '2';
-        $imapData->smtp_port = '3';
-        $imapData->user = '4';
-        $imapData->password = '5';
-
-        $req = $this->createJsonRequest('GET', '/account/' . urlencode($user->id) . '?access_token=' . urlencode($config->tokenGuest), (array)$imapData);
-        $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-    }
-
-    public function testHasNotAccount()
-    {
-        $user = Fixtures::user();
-        $imapData = new stdClass();
-        $imapData->imap_url = '1';
-        $imapData->smtp_host = '2';
-        $imapData->smtp_port = '3';
-        $imapData->user = '4';
-        $imapData->password = '5';
-
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('GET', '/account/' . urlencode($user->id) . '?access_token=' . urlencode($config->tokenGuest), (array)$imapData);
-        $resp = $this->app->handle($req);
-        $this->assertEquals(404, $resp->getStatusCode());
-    }
-    public function testAddAccountOk()
-    {
-        $user = Fixtures::user();
-        $mock = $this->mock(ImapCtrl::class);
-        $mock->method('canConnect');
-        $this->assertEquals(0, count(Account::getAll()));
-
-        $imapData = new stdClass();
-        $imapData->imap_url = '1';
-        $imapData->smtp_host = '2';
-        $imapData->smtp_port = '3';
-        $imapData->user = '4';
-        $imapData->password = '5';
-
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/account/register/' . urlencode($user->id) . '?access_token=' . urlencode($config->tokenGuest), (array)$imapData);
-        $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-
-        $accounts = Account::getAll();
-        $this->assertEquals(1, count($accounts));
-        $this->assertNotNull(User::getByUid($accounts[0]->user_uid));
-        $this->assertNotEmpty($accounts[0]->data);
     }
 
     public function testEventsCreateRoom()
@@ -134,7 +73,7 @@ class AppServiceCtrlTest extends TestCase
         $data->events[] = $event;
 
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest), (array)$data);
+        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $this->assertEquals(1, count(Room::getAll()));
@@ -159,7 +98,7 @@ class AppServiceCtrlTest extends TestCase
         $this->assertNotEquals($room->name, $event->content);
 
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest), (array)$data);
+        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
 
@@ -187,7 +126,7 @@ class AppServiceCtrlTest extends TestCase
         $this->assertEquals(1, count(Member::getAll()));
 
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest), (array)$data);
+        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
 
@@ -213,7 +152,7 @@ class AppServiceCtrlTest extends TestCase
         $this->assertEquals(1, count(Member::getAll()));
 
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest), (array)$data);
+        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
 
@@ -229,7 +168,7 @@ class AppServiceCtrlTest extends TestCase
         $room->join($user);
         $sender = User::getByUid($room->creator_uid);
         $account = Fixtures::account($sender);
-        $account->setContent($config, Fixtures::imapAccount());
+        $account->setContent($config, Fixtures::imapData());
         $account->save();
 
         $data = new stdClass();
@@ -252,7 +191,7 @@ class AppServiceCtrlTest extends TestCase
         $smtp->method('send');
 
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest), (array)$data);
+        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
     }
@@ -266,7 +205,7 @@ class AppServiceCtrlTest extends TestCase
         $room->join($user);
         $sender = User::getByUid($room->creator_uid);
         $account = Fixtures::account($sender);
-        $account->setContent($config, Fixtures::imapAccount());
+        $account->setContent($config, Fixtures::imapData());
         $account->save();
 
         $url = 'mxc://somehwhere.net/me.jpg';
@@ -290,7 +229,7 @@ class AppServiceCtrlTest extends TestCase
         $smtp->method('send');
 
         $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest), (array)$data);
+        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
     }

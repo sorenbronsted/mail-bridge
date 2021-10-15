@@ -1,0 +1,17 @@
+html,body{
+    height:100%;
+}
+
+/*
+blockquote {
+    display: none;
+}
+*/
+
+i {
+    display: inline-block;
+}
+
+[aria-expanded="true"] i.bi-chevron-right {
+    transform: rotate(90deg);
+}

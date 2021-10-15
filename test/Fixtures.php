@@ -42,12 +42,13 @@ class Fixtures
     public static function account(User $user): Account
     {
         $account = new Account();
+        $account->name = 'test';
         $account->user_uid = $user->uid;
         $account->save();
         return $account;
     }
 
-    public static function imapAccount(): ImapAccount
+    public static function imapData(): stdClass
     {
         $fixture = new stdClass();
         $fixture->imap_url = '1';
@@ -55,6 +56,6 @@ class Fixtures
         $fixture->smtp_port = '3';
         $fixture->user = '4';
         $fixture->password = '5';
-        return ImapAccount::parse((array)$fixture);
+        return $fixture;
     }
 }

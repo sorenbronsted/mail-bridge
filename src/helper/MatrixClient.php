@@ -17,10 +17,12 @@ use ZBateson\MailMimeParser\Message;
 class MatrixClient
 {
     private Http $http;
+    private AppServiceConfig $config;
 
-    public function __construct(Http $http)
+    public function __construct(Http $http, AppServiceConfig $config)
     {
         $this->http = $http;
+        $this->config = $config;
     }
 
     public function createUser(User $user, DateTime $ts)
@@ -42,7 +44,7 @@ class MatrixClient
         $url = '/_matrix/client/r0/createRoom?user_id=' . urlencode($creator->id) . '&ts=' . ($ts->format('U') * 1000);
         $data = new stdClass();
         $data->visibility = 'private';
-        $data->preset = 'trusted_private_chat';
+        $data->preset = 'trusted_private_chat'; // This does work as expected se join()
         $data->name = $name;
         $result = $this->http->post($url, $data);
         return $result->room_id;
@@ -62,6 +64,26 @@ class MatrixClient
         $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/join?user_id=' . urlencode($user->id) . '&ts=' . ($ts->format('U') * 1000);
         $data  = new stdClass();
         $this->http->post($url, $data);
+
+        /* Ensure that matrix users (non-puppets) have full control over the room.
+        This is a work around for trusted_private_chat preset not working as expected
+        Setting the state event works, but is not enforced, when trying to change the room
+        if (!User::isPuppet($user->id)) {
+            $creator = User::getByUid($room->creator_uid);
+
+            $data  = new stdClass();
+            $data->content = new stdClass();
+            $data->content->users = [$user->id => 100];
+            $data->event_id = uniqid() . ':' . $this->config->domain;
+            $data->origin_server_ts = ($ts->format('U') * 1000);
+            $data->room_id = $room->id;
+            $data->sender = $creator->id;
+            $data->type = 'm.room.power_levels';
+
+            $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/state/' . $data->type . '?user_id=' . urlencode($creator->id) . '&ts=' . ($ts->format('U') * 1000);
+            $this->http->put($url, $data);
+        }
+        */
     }
 
     public function send(Room $room, User $from, Message $message, DateTime $ts)
