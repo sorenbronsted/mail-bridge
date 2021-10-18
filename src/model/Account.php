@@ -10,6 +10,24 @@ class Account extends ModelObject
     protected string $name = '';
     protected string $data = '';
     protected int $user_uid;
+    // Transient properties
+    protected string $_imap_url = '';
+    protected string $_smtp_host = '';
+    protected string $_smtp_port = '';
+    protected string $_user = '';
+    protected string $_password = '';
+
+    public function unlock(AppServiceConfig $config)
+    {
+        $object = unserialize(Crypto::decrypt($this->data, $config->key));
+        foreach ((array)$object as $name => $value) {
+            if (in_array($name, ['uid', 'name'])) {
+                continue;
+            }
+            $property = '_' . $name;
+            $this->$property = $value;
+        }
+    }
 
     public function getContent(AppServiceConfig $config): ?stdClass
     {
@@ -35,7 +53,7 @@ class Account extends ModelObject
         $rules->password = FILTER_DEFAULT;
 
         $result = filter_var_array((array)$data, (array)$rules);
-        $test = array_filter(array_values($result), function($item) {
+        $test = array_filter(array_values($result), function ($item) {
             return !empty($item);
         });
         if (count($test) != count((array)$rules)) {
@@ -49,8 +67,7 @@ class Account extends ModelObject
         try {
             self::getOneBy(['user_uid' => $user->uid]);
             return true;
-        }
-        catch(NotFoundException $e) {
+        } catch (NotFoundException $e) {
             // ignore
         }
         return false;

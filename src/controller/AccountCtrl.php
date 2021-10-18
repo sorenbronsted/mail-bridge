@@ -52,7 +52,7 @@ class AccountCtrl extends ModelObjectCrudCtrl
         //TODO P2 jwt cookie
         $cookie = new SetCookie($this->config->cookieName, $user->uid, time() + 60 * 60 * 24 * 30 * 12, '/', 'localhost', true, true, 'lax');
         $response = $cookie->addToResponse($response);
-        return $response->withHeader('Location', '/account/index')->withStatus(302);
+        return $response->withHeader('Location', '/account')->withStatus(302);
     }
 
     protected function getObjectsByUser(User $user): DbCursor
@@ -103,23 +103,17 @@ class AccountCtrl extends ModelObjectCrudCtrl
 
     protected function renderForm(ResponseInterface $response, ?object $selected = null): MessageInterface
     {
-        $data = new stdClass();
         if ($selected) {
-            $data = $selected->getContent($this->config);
-            $data->uid = $selected->uid;
-            $data->name = $selected->name;
+            $selected->unlock($this->config);
         }
-        return parent::renderForm($response, $data);
+        return parent::renderForm($response, $selected);
     }
 
     protected function render(ResponseInterface $response, DbCursor $objects, ?object $selected): MessageInterface
     {
-        $data = new stdClass();
         if ($selected) {
-            $data = $selected->getContent($this->config);
-            $data->uid = $selected->uid;
-            $data->name = $selected->name;
+            $selected->unlock($this->config);
         }
-        return parent::render($response, $objects, $data);
+        return parent::render($response, $objects, $selected);
     }
 }

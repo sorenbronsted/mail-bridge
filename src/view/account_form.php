@@ -30,28 +30,28 @@
                     name="imap_url"
                     placeholder="..."
                     <?= $this->data->state == 'show' ? 'disabled' : '' ?>
-                    value="<?= $this->data->selected->imap_url ?? '' ?>" />
+                    value="<?= $this->data->selected->_imap_url ?? '' ?>" />
 
                 <label class="form-label">Smtp host</label>
                 <input class="<?= $this->data->state == 'show' ? 'form-control-plaintext' : 'form-control' ?>"
                     required
                     name="smtp_host"
                     <?= $this->data->state == 'show' ? 'disabled' : '' ?>
-                    value="<?= $this->data->selected->smtp_host ?? '' ?>"  />
+                    value="<?= $this->data->selected->_smtp_host ?? '' ?>"  />
 
                 <label class="form-label">Smtp port</label>
                 <input class="<?= $this->data->state == 'show' ? 'form-control-plaintext' : 'form-control' ?>"
                     required
                     name="smtp_port"
                     <?= $this->data->state == 'show' ? 'disabled' : '' ?>
-                    value="<?= $this->data->selected->smtp_port ?? '' ?>"  />
+                    value="<?= $this->data->selected->_smtp_port ?? '' ?>"  />
 
                 <label class="form-label">User</label>
                 <input class="<?= $this->data->state == 'show' ? 'form-control-plaintext' : 'form-control' ?>"
                     required
                     name="user"
                     <?= $this->data->state == 'show' ? 'disabled' : '' ?>
-                    value="<?= $this->data->selected->user ?? '' ?>"  />
+                    value="<?= $this->data->selected->_user ?? '' ?>"  />
 
                 <label class="form-label">Password</label>
                 <input class="<?= $this->data->state == 'show' ? 'form-control-plaintext' : 'form-control' ?>"
@@ -59,7 +59,7 @@
                     name="password"
                     type="password"
                     <?= $this->data->state == 'show' ? 'disabled' : '' ?>
-                    value="<?= $this->data->selected->password ?? '' ?>"  />
+                    value="<?= $this->data->selected->_password ?? '' ?>"  />
             </div>
         </div>
     </form>

@@ -3,6 +3,9 @@
 empty:
 	rm db/db.sqlite
 
+user:
+	sqlite3 db/db.sqlite < db/user.sql
+
 migrate:
 	vendor/bin/ruckus.php db:migrate
 
