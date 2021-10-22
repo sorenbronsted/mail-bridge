@@ -4,6 +4,7 @@ vendor
 src/data
 logs
 .vscode
+.idea
 build
 .phpunit.result.cache
 .idea/.gitignore

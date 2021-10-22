@@ -32,5 +32,6 @@ function routes(App $app): void
         $group->get('/{uid}/edit', [AccountCtrl::class, 'edit']);
         $group->post('/save', [AccountCtrl::class, 'save']);
         $group->get('/{uid}/delete', [AccountCtrl::class, 'delete']);
+        $group->get('/{uid}/verify', [AccountCtrl::class, 'verify']);
     })->add(UserAuthenticateCtrl::class);
 }

@@ -34,7 +34,7 @@ class ImapCtrl
 
     public function fetch(Account $account, DateTime $stop)
     {
-        $accountData = $account->getContent($this->config);
+        $accountData = $account->getAccountData($this->config);
         $this->mail->open($accountData);
 
         // sort mailbox by date in reverse order
@@ -53,20 +53,10 @@ class ImapCtrl
         $this->mail->close();
     }
 
-    public function canConnect(stdClass $accountData)
-    {
-        // Throws an exception if not working
-        $this->mail->open($accountData);
-        $this->mail->close();
-
-        $this->smtp->open($accountData);
-        $this->smtp->close();
-    }
-
     public function sendMessage(User $sender, DbCursor $recipients, string $subject, string $text, string $html = '')
     {
         $account = Account::getOneBy(['user_uid' => $sender->uid]);
-        $accountData = $account->getContent($this->config);
+        $accountData = $account->getAccountData($this->config);
         $this->smtp->open($accountData);
         $this->smtp->from($sender);
         $this->smtp->addRecipients($recipients);

@@ -21,7 +21,7 @@ class ImapCtrlTest extends TestCase
 
         $this->config = $this->container->get(AppServiceConfig::class);
         $this->account = Fixtures::account($this->user);
-        $this->account->setContent($this->config, Fixtures::imapData());
+        $this->account->setAccountData($this->config, Fixtures::accountData());
         $this->account->save();
     }
 
@@ -46,42 +46,6 @@ class ImapCtrlTest extends TestCase
         $ctrl = $this->container->get(ImapCtrl::class);
         $ctrl->fetch($this->account, $stop);
         $this->assertTrue(true);
-    }
-
-    public function testCanConnect()
-    {
-        $imap = $this->mock(Imap::class);
-        $imap->method('open')->willReturn(true);
-        $smtp = $this->mock(Smtp::class);
-        $smtp->method('open')->willReturn(true);
-
-        $ctrl = $this->container->get(ImapCtrl::class);
-        $ctrl->canConnect($this->account->getContent($this->config));
-        $this->assertTrue(true);
-    }
-
-    public function testCanNotConnectImap()
-    {
-        $imap = $this->mock(Imap::class);
-        $imap->method('open')->willThrowException(new Exception('imap failed'));
-
-        $ctrl = $this->container->get(ImapCtrl::class);
-
-        $this->expectExceptionMessage('imap failed');
-        $ctrl->canConnect($this->account->getContent($this->config));
-    }
-
-    public function testCanNotConnectSmtp()
-    {
-        $imap = $this->mock(Imap::class);
-        $imap->method('open')->willReturn(true);
-        $smtp = $this->mock(Smtp::class);
-        $smtp->method('open')->willThrowException(new Exception('smtp failed'));
-
-        $ctrl = $this->container->get(ImapCtrl::class);
-
-        $this->expectExceptionMessage('smtp failed');
-        $ctrl->canConnect($this->account->getContent($this->config));
     }
 
     public function testSendMessage()

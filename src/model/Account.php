@@ -7,29 +7,34 @@ use stdClass;
 
 class Account extends ModelObject
 {
+    // Account verification states
+    const StateNone = 0;
+    const StateOk   = 1;
+    const StateFail = 2;
+
     protected string $name = '';
     protected string $data = '';
-    protected int $user_uid;
-    // Transient properties
-    protected string $_imap_url = '';
-    protected string $_smtp_host = '';
-    protected string $_smtp_port = '';
-    protected string $_user = '';
-    protected string $_password = '';
+    protected int    $state = self::StateNone;
+    protected string $state_text = 'Not verified';
+    protected int    $user_uid;
 
-    public function unlock(AppServiceConfig $config)
+    public function verify(AppServiceConfig $config, Imap $imap, Smtp $smtp)
     {
-        $object = unserialize(Crypto::decrypt($this->data, $config->key));
-        foreach ((array)$object as $name => $value) {
-            if (in_array($name, ['uid', 'name'])) {
-                continue;
-            }
-            $property = '_' . $name;
-            $this->$property = $value;
+        $this->state = self::StateNone;
+        try {
+            $imap->canConnect($this->getAccountData($config));
+            $smtp->canConnect($this->getAccountData($config));
+            $this->state = self::StateOk;
+            $this->state_text = 'Ok';
         }
+        catch(Exception $e) {
+            $this->state = self::StateFail;
+            $this->state_text = $e->getMessage();
+        }
+        $this->save();
     }
 
-    public function getContent(AppServiceConfig $config): ?stdClass
+    public function getAccountData(AppServiceConfig $config): ?AccountData
     {
         if ($this->data) {
             return unserialize(Crypto::decrypt($this->data, $config->key));
@@ -37,13 +42,13 @@ class Account extends ModelObject
         return null;
     }
 
-    public function setContent(AppServiceConfig $config, stdClass $data)
+    public function setAccountData(AppServiceConfig $config, AccountData $data): void
     {
         $this->validate($data);
         $this->data = Crypto::encrypt(serialize($data), $config->key);
     }
 
-    private function validate(stdClass $data)
+    private function validate(AccountData $data)
     {
         $rules = new stdClass();
         $rules->imap_url = FILTER_DEFAULT;
@@ -60,16 +65,5 @@ class Account extends ModelObject
             //TODO P1 which properties fails and send a validation exception
             throw new Exception('Imap data is not valid');
         }
-    }
-
-    public static function exists(User $user): bool
-    {
-        try {
-            self::getOneBy(['user_uid' => $user->uid]);
-            return true;
-        } catch (NotFoundException $e) {
-            // ignore
-        }
-        return false;
     }
 }

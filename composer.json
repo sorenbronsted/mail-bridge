@@ -46,7 +46,8 @@
         "ezyang/htmlpurifier": "^4.13",
         "ruckusing/ruckusing-migrations": "^1.1",
         "hansott/psr7-cookies": "^3.0",
-        "php-di/slim-bridge": "^3.1"
+        "php-di/slim-bridge": "^3.1",
+        "ext-imap": "*"
     },
     "repositories": [{
         "type": "path",

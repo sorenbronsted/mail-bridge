@@ -59,21 +59,21 @@ abstract class ModelObjectCrudCtrl
         return $response->withHeader('Location', $this->getRouteToObject($object))->withStatus(302);
     }
 
-    protected function renderForm(ResponseInterface $response, ?ModelObject $selected = null): MessageInterface
+    protected function renderForm(ResponseInterface $response, ?object $selected = null): MessageInterface
     {
         $data = new stdClass();
         $data->selected = $selected;
-        $data->state = 'edit';
+        $data->uiState = 'edit';
         $template =  $this->getEditTemplate($data);
         $response->getBody()->write(json_encode($template->render()));
         return $response->withHeader('Content-Type', 'application/json');
     }
 
-    protected function render(ResponseInterface $response, DbCursor $objects, ?ModelObject $selected): MessageInterface
+    protected function render(ResponseInterface $response, DbCursor $objects, ?object $selected): MessageInterface
     {
         $data = new stdClass();
         $data->user = $this->user;
-        $data->state = 'show';
+        $data->uiState = 'show';
         $data->objects = $objects;
         $data->selected = $selected;
         $template = $this->getShowTemplate($data);

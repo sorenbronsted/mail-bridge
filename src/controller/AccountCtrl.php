@@ -2,6 +2,7 @@
 
 namespace bronsted;
 
+use Exception;
 use HansOtt\PSR7Cookies\SetCookie;
 use Psr\Http\Message\MessageInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -55,6 +56,17 @@ class AccountCtrl extends ModelObjectCrudCtrl
         return $response->withHeader('Location', '/account')->withStatus(302);
     }
 
+    public function verify(ResponseInterface $response, Imap $imap, Smtp $smtp, int $uid): MessageInterface
+    {
+        $account = Account::getByUid($uid);
+        $account->verify($this->config, $imap, $smtp);
+
+        if ($account->state == Account::StateFail) {
+            return parent::edit($response, $uid);
+        }
+        return parent::show($response, $uid);
+    }
+
     protected function getObjectsByUser(User $user): DbCursor
     {
         return Account::getBy(['user_uid' => $user->uid]);
@@ -76,7 +88,7 @@ class AccountCtrl extends ModelObjectCrudCtrl
             $account->user_uid = $user->uid;
         }
         $account->name = $data->name;
-        $account->setContent($this->config, $data);
+        $account->setAccountData($this->config, new AccountData($data));
         $account->save();
         return $account;
     }
@@ -103,17 +115,27 @@ class AccountCtrl extends ModelObjectCrudCtrl
 
     protected function renderForm(ResponseInterface $response, ?object $selected = null): MessageInterface
     {
+        $data = null;
         if ($selected) {
-            $selected->unlock($this->config);
+            $data = $selected->getAccountData($this->config);
+            $data->uid = $selected->uid;
+            $data->name = $selected->name;
+            $data->state = $selected->state;
+            $data->state_text = $selected->state_text;
         }
-        return parent::renderForm($response, $selected);
+        return parent::renderForm($response, $data);
     }
 
     protected function render(ResponseInterface $response, DbCursor $objects, ?object $selected): MessageInterface
     {
+        $data = null;
         if ($selected) {
-            $selected->unlock($this->config);
+            $data = $selected->getAccountData($this->config);
+            $data->uid = $selected->uid;
+            $data->name = $selected->name;
+            $data->state = $selected->state;
+            $data->state_text = $selected->state_text;
         }
-        return parent::render($response, $objects, $selected);
+        return parent::render($response, $objects, $data);
     }
 }

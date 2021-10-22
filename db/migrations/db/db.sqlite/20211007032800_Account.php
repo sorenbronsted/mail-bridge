@@ -8,6 +8,8 @@ class Account extends Ruckusing_Migration_Base
         $table->column('uid', 'integer', ['extra' => 'primary key autoincrement']);
         $table->column('name', 'string', ['limit' => 32, 'null' => true]);
         $table->column('data', 'text', ['null' => true]);
+        $table->column('state', 'integer', ['null' => false]);
+        $table->column('state_text', 'string', ['limit' => 32, 'null' => true]);
         $table->column('user_uid', 'integer', ['null' => false]);
         $table->finish();
 

@@ -34,13 +34,13 @@ class Imap
         $this->close();
     }
 
-    public function open(stdClass $account)
+    public function open(AccountData $accountData)
     {
         if ($this->connection == null) {
-            $this->connection = imap_open($account->imap_server, $account->user, $account->password);
+            $this->connection = @imap_open($accountData->imap_url, $accountData->user, $accountData->password);
             if ($this->connection === false) {
                 $error = imap_last_error();
-                throw new Exception('imap_open failed: ' . $error);
+                throw new Exception($error, 401);
             }
         }
     }
@@ -53,4 +53,13 @@ class Imap
         }
     }
 
+    public function canConnect(AccountData $accountData)
+    {
+        // Throws an exception if not working
+        $this->open($accountData);
+        $this->close();
+
+        // $this->smtp->open($account->getAccountData($this->config));
+        // $this->smtp->close();
+    }
 }

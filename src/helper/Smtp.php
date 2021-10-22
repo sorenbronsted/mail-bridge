@@ -9,12 +9,12 @@ class Smtp
 {
     private $mailer;
 
-    public function open(stdClass $account)
+    public function open(AccountData $accountData)
     {
         $this->mailer = new PHPMailer(true);
         $this->mailer->isSMTP();
-        $this->mailer->Host = $account->smtp_host;
-        $this->mailer->Port = $account->smtp_port;
+        $this->mailer->Host = $accountData->smtp_host;
+        $this->mailer->Port = $accountData->smtp_port;
     }
 
     public function from(User $user)
@@ -57,4 +57,12 @@ class Smtp
     {
         $this->mailer = null;
     }
+
+    public function canConnect(AccountData $accountData)
+    {
+        // Throws an exception if not working
+        $this->open($accountData);
+        $this->close();
+    }
+
 }

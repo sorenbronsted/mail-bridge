@@ -168,7 +168,7 @@ class AppServiceCtrlTest extends TestCase
         $room->join($user);
         $sender = User::getByUid($room->creator_uid);
         $account = Fixtures::account($sender);
-        $account->setContent($config, Fixtures::imapData());
+        $account->setAccountData($config, Fixtures::accountData());
         $account->save();
 
         $data = new stdClass();
@@ -205,7 +205,7 @@ class AppServiceCtrlTest extends TestCase
         $room->join($user);
         $sender = User::getByUid($room->creator_uid);
         $account = Fixtures::account($sender);
-        $account->setContent($config, Fixtures::imapData());
+        $account->setAccountData($config, Fixtures::accountData());
         $account->save();
 
         $url = 'mxc://somehwhere.net/me.jpg';

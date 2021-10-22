@@ -48,6 +48,11 @@ class Fixtures
         return $account;
     }
 
+    public static function accountData(): AccountData
+    {
+        return new AccountData(self::imapData());
+    }
+
     public static function imapData(): stdClass
     {
         $fixture = new stdClass();
