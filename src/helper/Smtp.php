@@ -9,12 +9,20 @@ class Smtp
 {
     private $mailer;
 
+    public function __construct(PHPMailer $mailer)
+    {
+        $this->mailer = $mailer;
+        $this->mailer->isSMTP();
+        $this->mailer->SMTPAuth   = true;
+        $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        $this->mailer->Port       = 465;
+    }
+
     public function open(AccountData $accountData)
     {
-        $this->mailer = new PHPMailer(true);
-        $this->mailer->isSMTP();
+        $this->mailer->Username = $accountData->user;
+        $this->mailer->Password = $accountData->password;
         $this->mailer->Host = $accountData->smtp_host;
-        $this->mailer->Port = $accountData->smtp_port;
     }
 
     public function from(User $user)
@@ -50,19 +58,25 @@ class Smtp
     public function send()
     {
         $this->mailer->send();
-        $this->close();
-    }
-
-    public function close()
-    {
-        $this->mailer = null;
     }
 
     public function canConnect(AccountData $accountData)
     {
         // Throws an exception if not working
         $this->open($accountData);
-        $this->close();
+        $this->mailer->smtpConnect();
     }
 
+    public function sendByAccount(AppServiceConfig $config, stdClass $data)
+    {
+        $accountData = $data->account->getAccountData($config);
+        $this->open($accountData);
+        $this->from($data->sender);
+        $this->subject($data->subject);
+        $this->body($data->text, $data->html);
+        foreach($data->recipients as $recipient) {
+            $this->mailer->addAddress($recipient->email, $recipient->name);
+        }
+        $this->send();
+    }
 }

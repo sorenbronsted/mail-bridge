@@ -11,9 +11,8 @@ class TestCase extends FrameworkTestCase
 
     protected function setUp(): void
     {
-        global $app;
         $this->boot();
-        $app = $this->app;
+        $this->container->get(FileStore::class)->cleanAll();
         Fixtures::clean();
     }
 }

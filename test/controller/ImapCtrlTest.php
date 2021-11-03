@@ -3,8 +3,10 @@
 namespace bronsted;
 
 use DateTime;
-use Exception;
+use DirectoryIterator;
+use SplFileInfo;
 use stdClass;
+use ZBateson\MailMimeParser\Message;
 
 class ImapCtrlTest extends TestCase
 {
@@ -16,109 +18,118 @@ class ImapCtrlTest extends TestCase
     {
         parent::setUp();
         $this->user = Fixtures::user();
-        $this->user->id = '1';
-        $this->user->save();
 
         $this->config = $this->container->get(AppServiceConfig::class);
         $this->account = Fixtures::account($this->user);
         $this->account->setAccountData($this->config, Fixtures::accountData());
         $this->account->save();
+
+        $mock = $this->mock(MatrixClient::class);
+        $mock->method('send');
+        $mock->method('createUser');
+        $mock->method('invite');
+        $mock->method('join');
+        $mock->method('upload');
+        $mock->method('createRoom')->willReturn('1');
     }
 
     public function testFetch()
     {
-        $stop = new DateTime();
-
-        $mockFile = $this->mock(File::class);
-        $mockFile->method('root');
-        $mockFile->method('write');
+        $mockFile = $this->mock(FileStore::class);
+        $mockFile->method('write')->with(
+            $this->equalTo(FileStore::Inbox),
+            $this->stringStartsWith($this->account->uid . '-')
+        );
 
         $mockMail = $this->mock(Imap::class);
         $mockMail->method('open');
         $mockMail->method('close');
         $mockMail->method('count')->willReturn(5);
         $mockMail->method('header')->willReturn(
-            (object)['udate' => $stop->format('U') + 10],
-            (object)['udate' => $stop->format('U') - 10],
+            (object)['udate' => (new DateTime())->format('U')],
+            (object)['udate' => (new DateTime('yesterday'))->format('U') - 10],
         );
         $mockMail->method('message')->willReturn('Message 1');
 
         $ctrl = $this->container->get(ImapCtrl::class);
-        $ctrl->fetch($this->account, $stop);
+        $ctrl->fetch($this->account);
         $this->assertTrue(true);
     }
 
     public function testSendMessage()
     {
-        $smtp = $this->mock(Smtp::class);
-        $smtp->method('open');
-        $smtp->method('from');
-        $smtp->method('addRecipients');
-        $smtp->method('subject');
-        $smtp->method('body');
-        $smtp->method('send');
+        $mock = $this->mock(FileStore::class);
+        $mock->expects($this->once())->method('write');
 
         $ctrl = $this->container->get(ImapCtrl::class);
         $ctrl->sendMessage($this->user, User::getAll(), 'test', 'test html');
-        $this->assertTrue(true);
+    }
+
+    public function testSend()
+    {
+        $mock = $this->mock(Smtp::class);
+        $mock->expects($this->atLeastOnce())->method('sendByAccount');
+
+        $ctrl = $this->container->get(ImapCtrl::class);
+        $ctrl->sendMessage($this->user, User::getAll(), 'test', 'test html');
+
+        $store = $this->container->get(FileStore::class);
+        $items = $store->getDir(FileStore::Outbox);
+        foreach($items as $item) {
+            $ctrl->send($item);
+        }
     }
 
     public function testImportMultiUser()
     {
-        $mock = $this->mock(Http::class);
-        $mock->method('post')->willReturn(
-            new stdClass(), // register from
-            (object)['room_id' => '1'], // create room
-            new stdClass(), // register user 1
-            new stdClass(), // invite user 1
-            new stdClass(), // join user 1
-            new stdClass(), // register user 2
-            new stdClass(), // invite user 2
-            new stdClass(), // join user 2
-        );
-        $mock->method('put')->willReturn(
-            new stdClass(), // register from
-            new stdClass(), // register user 1
-            new stdClass(), // register user 2
-            new stdClass(), // send message
-            new stdClass(), // send file
-        );
-        $mock->method('postStream')->willReturn(
-            (object)['content_uri' => 'some url'], // upload
-        );
-
-        $fh = fopen(dirname(dirname(__FILE__)) . '/data/with_attachment.mime', 'r');
+        $fixture = dirname(dirname(__FILE__)) . '/data/with_attachment.mime';
+        $filename = '/tmp/' . $this->account->uid . '-' . uniqid() . '.mime';
+        copy($fixture, $filename);
+        $file = new SplFileInfo($filename);
         $ctrl = $this->container->get(ImapCtrl::class);
-        $ctrl->import($this->account, $fh);
-        fclose($fh);
+        $ctrl->import($file);
         $this->assertEquals(1, count(Room::getAll()));
         $this->assertEquals(4, count(User::getAll()));
     }
 
     public function testImportDirect()
     {
-        // $this->user->email = 'soren@bronsted.dk';
-        // $this->user->save();
-
-        $mock = $this->mock(Http::class);
-        $mock->method('post')->willReturn(
-            new stdClass(), // register from
-            (object)['room_id' => '1'], // create room
-            new stdClass(), // register user 1
-            new stdClass(), // invite user 1
-            new stdClass(), // join user 1
-        );
-        $mock->method('put')->willReturn(
-            new stdClass(), // register from
-            new stdClass(), // register user 1
-            new stdClass(), // send message
-        );
-
-        $fh = fopen(dirname(dirname(__FILE__)) . '/data/direct.mime', 'r');
+        $fixture = dirname(dirname(__FILE__)) . '/data/direct.mime';
+        $filename = '/tmp/' . $this->account->uid . '-' . uniqid() . '.mime';
+        copy($fixture, $filename);
+        $file = new SplFileInfo($filename);
         $ctrl = $this->container->get(ImapCtrl::class);
-        $ctrl->import($this->account, $fh);
-        fclose($fh);
+        $ctrl->import($file);
         $this->assertEquals(1, count(Room::getAll()));
         $this->assertEquals(2, count(User::getAll()));
+    }
+
+    public function testImportNoSubject()
+    {
+        $fixture = dirname(dirname(__FILE__)) . '/data/no_subject.mime';
+        $filename = '/tmp/' . $this->account->uid . '-' . uniqid() . '.mime';
+        copy($fixture, $filename);
+        $file = new SplFileInfo($filename);
+        $ctrl = $this->container->get(ImapCtrl::class);
+        $ctrl->import($file);
+        $rooms = Room::getAll();
+        $this->assertEquals(1, count($rooms));
+        $this->assertStringContainsString('No subject', $rooms[0]->name);
+        $this->assertEquals(23, count(User::getAll()));
+    }
+
+    public function testImportReply()
+    {
+        $fixture = dirname(dirname(__FILE__)) . '/data/reply.mime';
+        $filename = '/tmp/' . $this->account->uid . '-' . uniqid() . '.mime';
+        copy($fixture, $filename);
+        $file = new SplFileInfo($filename);
+        $ctrl = $this->container->get(ImapCtrl::class);
+        $ctrl->import($file);
+
+        $rooms = Room::getAll();
+        $this->assertEquals(1, count($rooms));
+        $this->assertEquals('Båd Nyt', $rooms[0]->name);
+        $this->assertEquals(23, count(User::getAll()));
     }
 }

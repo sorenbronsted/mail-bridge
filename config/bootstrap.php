@@ -24,8 +24,6 @@ function bootstrap(): App
         return json_decode($input);
     }]);
 
-    mail($container);
-    file($container);
     routes($app);
 
     return $app;

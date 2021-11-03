@@ -182,13 +182,8 @@ class AppServiceCtrlTest extends TestCase
         $event->content = (object)['msgtype' =>'m.text', 'body' => 'hej'];
         $data->events[] = $event;
 
-        $smtp = $this->mock(Smtp::class);
-        $smtp->method('open');
-        $smtp->method('from');
-        $smtp->method('addRecipients');
-        $smtp->method('subject');
-        $smtp->method('body')->with($this->equalTo('hej'));
-        $smtp->method('send');
+        $mock = $this->mock(FileStore::class);
+        $mock->expects($this->once())->method('write');
 
         $config = $this->container->get(AppServiceConfig::class);
         $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
@@ -220,13 +215,8 @@ class AppServiceCtrlTest extends TestCase
         $event->content = (object)['msgtype' =>'m.image', 'url' => $url];
         $data->events[] = $event;
 
-        $smtp = $this->mock(Smtp::class);
-        $smtp->method('open');
-        $smtp->method('from');
-        $smtp->method('addRecipients');
-        $smtp->method('subject');
-        $smtp->method('body')->with($this->equalTo($url));
-        $smtp->method('send');
+        $mock = $this->mock(FileStore::class);
+        $mock->expects($this->once())->method('write');
 
         $config = $this->container->get(AppServiceConfig::class);
         $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);

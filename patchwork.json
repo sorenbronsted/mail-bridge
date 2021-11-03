@@ -1,0 +1,11 @@
+{
+    "redefinable-internals": [
+        "imap_sort",
+        "imap_open",
+        "imap_close",
+        "imap_num_msg",
+        "imap_fetch_overview",
+        "imap_fetchheader",
+        "imap_body"
+    ]
+}

@@ -3,6 +3,7 @@
 namespace bronsted;
 
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 class Log
 {
@@ -15,6 +16,16 @@ class Log
 
     public static function __callStatic($name, $arguments)
     {
-        self::$instance->$name($arguments[0], $arguments[1] ?? []);
+        if ($arguments[0] instanceof Throwable) {
+            $th = $arguments[0];
+            self::$instance->$name($th->getMessage() . ' code: ' . $th->getCode() .  ' ' . $th->getFile() . ':' . $th->getLine());
+            foreach($th->getTrace() as $trace) {
+                $trace = (object)$trace;
+                self::$instance->$name($trace->function . ' ' . ($trace->file ?? '') . ':' . ($trace->line ?? ''));
+            }
+            }
+        else {
+            self::$instance->$name($arguments[0], $arguments[1] ?? []);
+        }
     }
 }

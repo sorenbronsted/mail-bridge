@@ -11,22 +11,22 @@ class Imap
 
     public function sort(int $by, bool $reverse)
     {
-        imap_sort($this->connection, $by, $reverse);
+        $this->isOk(imap_sort($this->connection, $by, $reverse));
     }
 
     public function count(): int
     {
-        return imap_num_msg($this->connection);
+        return $this->isOk(imap_num_msg($this->connection));
     }
 
     public function header(int $i): stdClass
     {
-        return (object)imap_fetch_overview($this->connection, $i);
+        return (object)$this->isOk(imap_fetch_overview($this->connection, $i));
     }
 
     public function message(int $i): string
     {
-        return imap_fetchheader($this->connection, $i) . imap_body($this->connection, $i);
+        return $this->isOk(imap_fetchheader($this->connection, $i)) . $this->isOk(imap_body($this->connection, $i));
     }
 
     public function __destruct()
@@ -58,8 +58,13 @@ class Imap
         // Throws an exception if not working
         $this->open($accountData);
         $this->close();
+    }
 
-        // $this->smtp->open($account->getAccountData($this->config));
-        // $this->smtp->close();
+    private function isOk($value)
+    {
+        if ($value === false) {
+            throw new Exception('Imap operation failed');
+        }
+        return $value;
     }
 }

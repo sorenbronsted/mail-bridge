@@ -2,6 +2,7 @@
 
 namespace bronsted;
 
+use DateTime;
 use Exception;
 use stdClass;
 
@@ -16,7 +17,18 @@ class Account extends ModelObject
     protected string $data = '';
     protected int    $state = self::StateNone;
     protected string $state_text = 'Not verified';
+    protected DateTime $updated;
     protected int    $user_uid;
+
+
+    public function save(): void
+    {
+        //Ensure updated has a date
+        if ($this->uid == 0 && !isset($this->updated)) {
+            $this->updated = new DateTime('yesterday');
+        }
+        parent::save();
+    }
 
     public function verify(AppServiceConfig $config, Imap $imap, Smtp $smtp)
     {
@@ -53,7 +65,6 @@ class Account extends ModelObject
         $rules = new stdClass();
         $rules->imap_url = FILTER_DEFAULT;
         $rules->smtp_host = FILTER_DEFAULT;
-        $rules->smtp_port = FILTER_DEFAULT | FILTER_VALIDATE_INT;
         $rules->user = FILTER_DEFAULT;
         $rules->password = FILTER_DEFAULT;
 
@@ -62,7 +73,7 @@ class Account extends ModelObject
             return !empty($item);
         });
         if (count($test) != count((array)$rules)) {
-            //TODO P1 which properties fails and send a validation exception
+            //TODO P2 which properties fails and send a validation exception
             throw new Exception('Imap data is not valid');
         }
     }

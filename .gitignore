@@ -1,5 +1,6 @@
 db/db.sqlite
 mails
+mails.tgz
 vendor
 src/data
 logs

@@ -58,7 +58,6 @@ class Fixtures
         $fixture = new stdClass();
         $fixture->imap_url = '1';
         $fixture->smtp_host = '2';
-        $fixture->smtp_port = '3';
         $fixture->user = '4';
         $fixture->password = '5';
         return $fixture;

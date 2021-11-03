@@ -1,7 +1,11 @@
 <?php
+
 namespace bronsted;
 
 use DateTime;
+use Exception;
+use SplFileInfo;
+use SplFileObject;
 use stdClass;
 use ZBateson\MailMimeParser\Header\AddressHeader;
 use ZBateson\MailMimeParser\Header\DateHeader;
@@ -17,57 +21,77 @@ class ImapCtrl
     private Message $message;
     private DateHeader $ts;
     private AppServiceConfig $config;
-    private Imap $mail;
-    private File $file;
+    private Imap $imap;
+    private FileStore $fileStore;
     private Smtp $smtp;
 
-    public function __construct(AppServiceConfig $config, MatrixClient $client, Imap $mail, File $file, Smtp $smtp)
+    public function __construct(AppServiceConfig $config, MatrixClient $client, Imap $imap, FileStore $fileStore, Smtp $smtp)
     {
         $this->config = $config;
         $this->client = $client;
-        $this->mail   = $mail;
-        $this->file   = $file;
+        $this->imap   = $imap;
+        $this->fileStore   = $fileStore;
         $this->smtp   = $smtp;
-
-        $this->file->root($config->storeInbox);
     }
 
-    public function fetch(Account $account, DateTime $stop)
+    public function fetch(Account $account)
     {
         $accountData = $account->getAccountData($this->config);
-        $this->mail->open($accountData);
+        $this->imap->open($accountData);
 
-        // sort mailbox by date in reverse order
-        $this->mail->sort(SORTDATE, true);
+        // sort mailbox by date with newest first
+        $this->imap->sort(SORTDATE, true);
 
-        $max = $this->mail->count();
-        for($i = 1; $i <= $max; $i++) {
-            $header = $this->mail->header($i);
-            if ($header->udate < $stop->format('U')) {
+        $max = $this->imap->count();
+        for ($i = 1; $i <= $max; $i++) {
+            $header = $this->imap->header($i);
+            if ($header->udate < $account->updated->format('U')) {
                 break;
             }
-            $filename = uniqid() . '.mime';
-            $message = $this->mail->message($i);
-            $this->file->write($filename, $message);
+            $filename = $account->uid . '-' . uniqid() . '.mime';
+            $message = $this->imap->message($i);
+            $this->fileStore->write(FileStore::Inbox, $filename, $message);
         }
-        $this->mail->close();
+        $this->imap->close();
+        $account->updated = new DateTime();
+        $account->save();
     }
 
     public function sendMessage(User $sender, DbCursor $recipients, string $subject, string $text, string $html = '')
     {
-        $account = Account::getOneBy(['user_uid' => $sender->uid]);
-        $accountData = $account->getAccountData($this->config);
-        $this->smtp->open($accountData);
-        $this->smtp->from($sender);
-        $this->smtp->addRecipients($recipients);
-        $this->smtp->subject($subject);
-        $this->smtp->body($text, $html);
-        $this->smtp->send();
+        //TODO P1 attachments
+        $data = new stdClass();
+        $data->sender = $sender;
+        $data->recipients = [];
+        $data->subject = $subject;
+        $data->text = $text;
+        $data->html = $html;
+        $data->account = Account::getOneBy(['user_uid' => $sender->uid]);
+
+        // Extract model objects so it can be serialized
+        foreach ($recipients as $recipient) {
+            $data->recipients[] = $recipient;
+        }
+
+        $filename = uniqid() . '.ser';
+        $this->fileStore->write(FileStore::Outbox, $filename, serialize($data));
     }
 
-    public function import(Account $account, $fh)
+    public function send(SplFileInfo $fileInfo)
     {
-        $this->parse($fh);
+        $file = $fileInfo->openFile('r');
+        $data = unserialize($file->fread($file->getSize()));
+        $this->smtp->sendByAccount($this->config, $data);
+    }
+
+    public function import(SplFileInfo $fileInfo)
+    {
+        $parts = explode('-', $fileInfo->getFilename());
+        if (count($parts) != 2) {
+            throw new Exception('Wrong filename form: ' . $fileInfo->getFilename());
+        }
+        $account = Account::getByUid($parts[0]);
+        $this->parse($fileInfo);
 
         if (count($this->to->getAddresses()) > 1) {
             $room = $this->getOrCreateMultiUserRoom($account);
@@ -78,8 +102,9 @@ class ImapCtrl
         $this->client->send($room, $this->from, $this->message, $this->ts->getDateTime());
     }
 
-    private function parse($fh)
+    private function parse(SplFileInfo $fileInfo)
     {
+        $fh = $fileInfo->openFile('r');
         $this->message = Message::from($fh);
 
         $this->to = $this->message->getHeader(HeaderConsts::TO);
@@ -109,8 +134,7 @@ class ImapCtrl
         $result = null;
         try {
             $result = User::getOneBy(['email' => $user->getEmail()]);
-        }
-        catch(NotFoundException $e) {
+        } catch (NotFoundException $e) {
             $result = User::create($user->getName(), $user->getEmail(), $this->config->domain);
             $this->client->createUser($result, $this->ts->getDateTime());
         }

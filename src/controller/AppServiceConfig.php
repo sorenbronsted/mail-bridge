@@ -9,6 +9,4 @@ class AppServiceConfig
     public array  $tokenGuest;
     public string $domain;
     public string $key;
-    public string $storeInbox;
-    public string $storeFailed;
 }

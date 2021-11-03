@@ -176,7 +176,6 @@ class AccountCtrlTest extends TestCase
         $this->assertStringContainsString('form-control-plaintext', $content->html);
         $this->assertStringContainsString($imapData->imap_url, $content->html);
         $this->assertStringContainsString($imapData->smtp_host, $content->html);
-        $this->assertStringContainsString($imapData->smtp_port, $content->html);
         $this->assertStringContainsString($imapData->user, $content->html);
         $this->assertStringContainsString($imapData->password, $content->html);
     }
@@ -200,7 +199,6 @@ class AccountCtrlTest extends TestCase
         $this->assertStringNotContainsString('form-control-plaintext', $content->html);
         $this->assertStringContainsString($imapData->imap_url, $content->html);
         $this->assertStringContainsString($imapData->smtp_host, $content->html);
-        $this->assertStringContainsString($imapData->smtp_port, $content->html);
         $this->assertStringContainsString($imapData->user, $content->html);
         $this->assertStringContainsString($imapData->password, $content->html);
     }
@@ -241,7 +239,6 @@ class AccountCtrlTest extends TestCase
         $saved = $accounts[0]->getAccountData($config);
         $this->assertEquals($imapData->imap_url, $saved->imap_url);
         $this->assertEquals($imapData->smtp_host, $saved->smtp_host);
-        $this->assertEquals($imapData->smtp_port, $saved->smtp_port);
         $this->assertEquals($imapData->user, $saved->user);
         $this->assertEquals($imapData->password, $saved->password);
     }
@@ -259,7 +256,6 @@ class AccountCtrlTest extends TestCase
         $fixture->name = 'fixture 1';
         $fixture->imap_url = 'fixture 2';
         $fixture->smtp_host = 'fixture 3';
-        $fixture->smtp_port = '117';
         $fixture->user = 'fixture 4';
         $fixture->password = 'fixture 5';
 
@@ -274,7 +270,6 @@ class AccountCtrlTest extends TestCase
         $saved = $accounts[0]->getAccountData($config);
         $this->assertEquals($fixture->imap_url, $saved->imap_url);
         $this->assertEquals($fixture->smtp_host, $saved->smtp_host);
-        $this->assertEquals($fixture->smtp_port, $saved->smtp_port);
         $this->assertEquals($fixture->user, $saved->user);
         $this->assertEquals($fixture->password, $saved->password);
     }

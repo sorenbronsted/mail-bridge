@@ -73,7 +73,7 @@ class MatrixClientTest extends TestCase
         $room = Fixtures::room();
         $user = Fixtures::user();
         $ts = new DateTime();
-        $message = Message::from(file_get_contents(dirname(__DIR__) .'/data/multi_recipients.mime'));
+        $message = Message::from(file_get_contents(dirname(__DIR__) .'/data/with_attachment.mime'));
         $client = $this->container->get(MatrixClient::class);
         $client->send($room, $user, $message, $ts);
         $this->assertTrue(true);

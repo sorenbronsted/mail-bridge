@@ -43,13 +43,6 @@ use bronsted\Account;
                 </div>
 
                 <div class="mb-2 row">
-                    <label class="col-md-2 col-form-label">Smtp port</label>
-                    <div class="col-md-10">
-                        <input class="<?= $this->data->uiState == 'show' ? 'form-control-plaintext' : 'form-control' ?>" required name="smtp_port" <?= $this->data->uiState == 'show' ? 'disabled' : '' ?> value="<?= $this->data->selected->smtp_port ?? '' ?>" />
-                    </div>
-                </div>
-
-                <div class="mb-2 row">
                     <label class="col-md-2 col-form-label">User</label>
                     <div class="col-md-10">
                         <input class="<?= $this->data->uiState == 'show' ? 'form-control-plaintext' : 'form-control' ?>" required name="user" <?= $this->data->uiState == 'show' ? 'disabled' : '' ?> value="<?= $this->data->selected->user ?? '' ?>" />

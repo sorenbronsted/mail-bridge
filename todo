@@ -2,18 +2,12 @@ Alle P1 skal laves inden egen drift:
 
 P1:
  - Søg efter TODO P1
- - Administrer mail konto oplysningerne på en side skal kaldes med matrix bruger id. Siden kan også verificere oplysningerne.
- - et cron job:
-    - som henter nye mails og gemmer dem i folderen inbox
-    - som importer mails fra folderen inbox til matrix, og som slettes ved ok og ved fejl flyttes til inbox/fail
-    - som sender de mails der ligger i outbox, og som slettes ved ok og ved fejl flyttes til outbox/fail
-    + der må kun kører 1 job ad gangen, så der tjekkes for om det allerede kører
-    - overvågning af cron job gennem logstash el. lign
-    - overvågning af fejl gennem logstash el. lign
+ - Håndterer forskellige configs (prod, test osv)
 
 P2:
  - Søg efter TODO P2
- - tests
+ - overvågning af cron job gennem logstash el. lign
+ - overvågning af fejl gennem logstash el. lign
  - tagge mails sendt fra denne appservice, så de kan genkendes igen
  - import at ældre mails skal ske fra inbox og sent mapperne, så dialogen kan følges.
  - i stedet for cron job kan php swoole måske bruges
