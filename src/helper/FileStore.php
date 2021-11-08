@@ -17,9 +17,9 @@ class FileStore
     private string $root;
     private static array $dirs = ['in', 'out', 'fail/import', 'fail/send'];
 
-    public function __construct($root)
+    public function __construct(AppServiceConfig $config)
     {
-        $this->root = $root;
+        $this->root = $config->fileStoreRoot;
         $this->ensureDirs();
     }
 

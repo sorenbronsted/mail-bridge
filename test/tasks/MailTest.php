@@ -47,8 +47,6 @@ class MailTest extends TestCase
 
     public function testLockWriteFail()
     {
-        // test it by setting lock file to a place which is not writeable eg. /var/run
-        //$this->markTestIncomplete('TODO P1 Lock filename should configurable');
         $this->config->pidFile = '/var/run/mailbrige.pid';
         $this->assertFalse(file_exists($this->config->pidFile));
         $task = $this->container->get(Mail::class);

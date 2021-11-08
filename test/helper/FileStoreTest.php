@@ -3,16 +3,16 @@
 namespace bronsted;
 
 use Exception;
-use Symfony\Component\Finder\Finder;
 
 class FileStoreTest extends TestCase
 {
     public function testCreate()
     {
-        $root = '/tmp/' . uniqid();
-        $store = new FileStore($root);
-        $this->assertEquals(3, count(glob($root . '/*')));
-        $this->assertEquals(2, count(glob($root . '/fail/*')));
+        $config = $this->container->get(AppServiceConfig::class);
+        $config->fileStoreRoot = '/tmp/' . uniqid();
+        $store = new FileStore($config);
+        $this->assertEquals(3, count(glob($config->fileStoreRoot . '/*')));
+        $this->assertEquals(2, count(glob($config->fileStoreRoot . '/fail/*')));
     }
 
     public function testGetDirFail()
