@@ -1,18 +1,12 @@
 version: '3.3'
 services:
-  imap.as:
+  mail-bridge.as:
     build: .
-    container_name: imap.as
+    container_name: mail-bridge
     ports:
       - 8001:80
     volumes:
       - ./000-default.conf:/etc/apache2/sites-enabled/000-default.conf
-      - ../../orm/:/var/www/orm
       - ..:/var/www/html
     environment:
-      - SYNAPSE=synapse
-
-networks:
-  default:
-    external:
-      name: dev-net
+      - environment=prod

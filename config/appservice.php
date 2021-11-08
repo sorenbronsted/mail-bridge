@@ -12,7 +12,7 @@ function appService(Container $container)
     if (empty($env)) {
         $env = 'dev';
     }
-    $filename = __DIR__ . "/${env}_config.yaml";
+    $filename = dirname(__DIR__) . "/env/${env}_config.yaml";
     $config = new AppServiceConfig($filename);
     $container->set(AppServiceConfig::class, $config);
 }
