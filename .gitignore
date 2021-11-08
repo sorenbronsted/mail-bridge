@@ -9,9 +9,5 @@ logs
 build
 env
 .phpunit.result.cache
-.idea/.gitignore
-.idea/mail-bridge.iml
-.idea/modules.xml
-.idea/php.xml
-.idea/phpunit.xml
-.idea/vcs.xml
+.idea
+mail-bridge.yaml

@@ -10,7 +10,7 @@ use Psr\Log\LoggerInterface;
 function logging(Container $container)
 {
     $log = new Logger('logger', []);
-    $log->pushHandler(new StreamHandler(STDERR, Logger::DEBUG));
+    $log->pushHandler(new StreamHandler('php://stderr', Logger::DEBUG));
     Log::setInstance($log);
 
     $container->set(Logger::class, $log);

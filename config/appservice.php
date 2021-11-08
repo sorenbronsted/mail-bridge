@@ -8,11 +8,7 @@ use function DI\env;
 
 function appService(Container $container)
 {
-    $env = getenv('environment');
-    if (empty($env)) {
-        $env = 'dev';
-    }
-    $filename = dirname(__DIR__) . "/env/${env}_config.yaml";
+    $filename = dirname(__DIR__) . "/mail-bridge.yaml";
     $config = new AppServiceConfig($filename);
     $container->set(AppServiceConfig::class, $config);
 }

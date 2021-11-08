@@ -1,12 +1,24 @@
 version: '3.3'
 services:
-  mail-bridge.as:
-    build: .
-    container_name: mail-bridge
-    ports:
-      - 8001:80
-    volumes:
-      - ./000-default.conf:/etc/apache2/sites-enabled/000-default.conf
-      - ..:/var/www/html
-    environment:
-      - environment=prod
+    mail-bridge:
+        build: .
+        container_name: mail-bridge
+        restart: always
+        ports:
+            - 8001:80
+        volumes:
+            - ./000-default.conf:/etc/apache2/sites-enabled/000-default.conf
+            - ..:/var/www/html
+        environment:
+            - environment=prod
+
+    composer:
+        restart: always
+        #user: "${UID}:${GID}"
+        image: composer
+        container_name: mail-bridge-composer
+        volumes:
+            - ..:/var/www/html
+        working_dir: /var/www/html
+        command: tail -f /dev/null
+        tty: true

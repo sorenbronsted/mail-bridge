@@ -1,0 +1,25 @@
+
+# matrix server url
+matrixUrl: url-to-your-matrix
+
+# the token for identification with the matrix server
+tokenMine: docker-compose run -e SYNAPSE_SERVER_NAME=your-matrix-domain -e SYNAPSE_REPORT_STATS=no synapse generate
+
+# tokens from guests this services we talk with
+tokenGuest:
+    - one from synapse
+
+# matrix server domain
+domain: your-matrix-domain
+
+# encryption key for account data
+key: use php src/cli/cli.php GenKey to generate one
+
+# name of the cookie
+cookieName: mailBridge
+
+# name of the pid file
+pidFile: /var/run/mail-bridge.pid
+
+# Root of file store
+fileStoreRoot: /var/tmp/mail
