@@ -4,6 +4,7 @@ namespace bronsted;
 
 use DateTime;
 use DirectoryIterator;
+use Exception;
 use SplFileInfo;
 use stdClass;
 use ZBateson\MailMimeParser\Message;
@@ -62,7 +63,7 @@ class ImapCtrlTest extends TestCase
         $mock->expects($this->once())->method('write');
 
         $ctrl = $this->container->get(ImapCtrl::class);
-        $ctrl->sendMessage($this->user, User::getAll(), 'test', 'test html');
+        $ctrl->sendMessage($this->user, User::getAll(), 'Subject', Fixtures::event());
     }
 
     public function testSend()
@@ -71,7 +72,7 @@ class ImapCtrlTest extends TestCase
         $mock->expects($this->atLeastOnce())->method('sendByAccount');
 
         $ctrl = $this->container->get(ImapCtrl::class);
-        $ctrl->sendMessage($this->user, User::getAll(), 'test', 'test html');
+        $ctrl->sendMessage($this->user, User::getAll(), 'Subject', Fixtures::event());
 
         $store = $this->container->get(FileStore::class);
         $items = $store->getDir(FileStore::Outbox);
@@ -80,7 +81,7 @@ class ImapCtrlTest extends TestCase
         }
     }
 
-    public function testImportMultiUser()
+    public function testImportMultiUserWithNonExistingRoom()
     {
         $fixture = dirname(dirname(__FILE__)) . '/data/with_attachment.mime';
         $filename = '/tmp/' . $this->account->uid . '-' . uniqid() . '.mime';
@@ -90,6 +91,22 @@ class ImapCtrlTest extends TestCase
         $ctrl->import($file);
         $this->assertEquals(1, count(Room::getAll()));
         $this->assertEquals(4, count(User::getAll()));
+    }
+
+    public function testImportMultiUserWithExistingRoom()
+    {
+        $room = Fixtures::room();
+        $room->name = 'Båd Nyt';
+        $room->save();
+
+        $fixture = dirname(dirname(__FILE__)) . '/data/multi_recipients.mime';
+        $filename = '/tmp/' . $this->account->uid . '-' . uniqid() . '.mime';
+        copy($fixture, $filename);
+        $file = new SplFileInfo($filename);
+        $ctrl = $this->container->get(ImapCtrl::class);
+        $ctrl->import($file);
+        $this->assertEquals(1, count(Room::getAll()));
+        $this->assertEquals(24, count(User::getAll()));
     }
 
     public function testImportDirect()
@@ -131,5 +148,13 @@ class ImapCtrlTest extends TestCase
         $this->assertEquals(1, count($rooms));
         $this->assertEquals('Båd Nyt', $rooms[0]->name);
         $this->assertEquals(23, count(User::getAll()));
+    }
+
+    public function testImportWithWrongFileNameFormat()
+    {
+        $filename = '/tmp/' . uniqid() . '.mime';
+        $ctrl = $this->container->get(ImapCtrl::class);
+        $this->expectException(Exception::class);
+        $ctrl->import(new SplFileInfo($filename));
     }
 }

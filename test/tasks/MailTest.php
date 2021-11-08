@@ -8,7 +8,6 @@ use Psr\Log\Test\TestLogger;
 
 class MailTest extends TestCase
 {
-    private string $lock = '/var/tmp/mxmail.pid';
     private AppServiceConfig $config;
     private FileStore $store;
     private TestLogger $logger;
@@ -22,7 +21,7 @@ class MailTest extends TestCase
 
         $this->config = $this->container->get(AppServiceConfig::class);
         $this->store = $this->container->get(FileStore::class);
-        @unlink($this->lock);
+        @unlink($this->config->pidFile);
     }
 
     public function testNoWork()
@@ -30,7 +29,7 @@ class MailTest extends TestCase
         $task = $this->container->get(Mail::class);
         $task->run([]);
         $this->assertFalse($this->logger->hasErrorRecords());
-        $this->assertFalse(file_exists($this->lock));
+        $this->assertFalse(file_exists($this->config->pidFile));
         $this->assertEmpty(Room::getAll());
         $this->assertEmpty(User::getAll());
         $this->assertEmpty(Account::getAll());
@@ -38,8 +37,8 @@ class MailTest extends TestCase
 
     public function testAllreadyRunning()
     {
-        $this->assertFalse(file_exists($this->lock));
-        touch($this->lock);
+        $this->assertFalse(file_exists($this->config->pidFile));
+        touch($this->config->pidFile);
         $task = $this->container->get(Mail::class);
         $task->run([]);
         $this->assertTrue($this->logger->hasInfoRecords());
@@ -49,12 +48,13 @@ class MailTest extends TestCase
     public function testLockWriteFail()
     {
         // test it by setting lock file to a place which is not writeable eg. /var/run
-        $this->markTestIncomplete('Lock filename should configurable');
-        $this->assertFalse(file_exists($this->lock));
+        //$this->markTestIncomplete('TODO P1 Lock filename should configurable');
+        $this->config->pidFile = '/var/run/mailbrige.pid';
+        $this->assertFalse(file_exists($this->config->pidFile));
         $task = $this->container->get(Mail::class);
         $task->run([]);
         $this->assertTrue($this->logger->hasErrorRecords());
-        $this->assertFalse($this->logger->hasErrorRecords());
+        $this->assertTrue($this->logger->hasRecordThatContains('Writing lock file failed','error'));
     }
 
     public function testFetchAndImport()
@@ -81,7 +81,7 @@ class MailTest extends TestCase
         $task = $this->container->get(Mail::class);
         $task->run([]);
         $this->assertFalse($this->logger->hasErrorRecords());
-        $this->assertFalse(file_exists($this->lock));
+        $this->assertFalse(file_exists($this->config->pidFile));
         $this->assertEquals(0, count($this->store->getDir(FileStore::Inbox)));
         $this->assertEquals(1, count(Room::getAll()));
         $this->assertEquals(23, count(User::getAll()));
@@ -103,12 +103,12 @@ class MailTest extends TestCase
         $smtpMock->expects($this->once())->method('sendByAccount');
 
         $ctrl = $this->container->get(ImapCtrl::class);
-        $ctrl->sendMessage($user, User::getAll(), 'test', 'test html');
+        $ctrl->sendMessage($user, User::getAll(), 'Subject', Fixtures::event());
 
         $task = $this->container->get(Mail::class);
         $task->run([]);
         $this->assertFalse($this->logger->hasErrorRecords());
-        $this->assertFalse(file_exists($this->lock));
+        $this->assertFalse(file_exists($this->config->pidFile));
         $this->assertEquals(0, count($this->store->getDir(FileStore::Outbox)));
     }
 
@@ -167,7 +167,7 @@ class MailTest extends TestCase
         $smtpMock->expects($this->once())->method('sendByAccount')->willThrowException(new Exception('Some error'));
 
         $ctrl = $this->container->get(ImapCtrl::class);
-        $ctrl->sendMessage($user, User::getAll(), 'test', 'test html');
+        $ctrl->sendMessage($user, User::getAll(), 'Subject', Fixtures::event());
 
         $task = $this->container->get(Mail::class);
         $task->run([]);

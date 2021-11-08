@@ -4,6 +4,7 @@ namespace bronsted;
 
 use Exception;
 use JustSteveKing\HttpSlim\HttpClient;
+use Psr\Http\Message\StreamInterface;
 use stdClass;
 use Symfony\Component\HttpClient\Psr18Client;
 
@@ -22,7 +23,7 @@ class Http
     public function postStream(string $url, string $contentType, $stream): stdClass
     {
         $requestFactory = new Psr18Client();
-        $request = $requestFactory->createRequest('POST', $this->config->baseUrl . $url);
+        $request = $requestFactory->createRequest('POST', $this->config->matrixUrl . $url);
         foreach (array_merge($this->header, ['Content-Type' => $contentType]) as $name => $value) {
             $request = $request->withHeader($name, $value);
         }
@@ -37,9 +38,19 @@ class Http
         return json_decode($response->getBody()->getContents());
     }
 
+    public function getStream(string $url): StreamInterface
+    {
+        $response = $this->client->get($this->config->matrixUrl . $url, $this->header);
+        $code = $response->getStatusCode();
+        if ($code != 200) {
+            throw new Exception("Request failed: " . $url, $code);
+        }
+        return $response->getBody();
+    }
+
     public function post(string $url, stdClass $data, array $additionalHeaders = []): stdClass
     {
-        $response = $this->client->post($this->config->baseUrl . $url, (array)$data, array_merge($this->header, $additionalHeaders));
+        $response = $this->client->post($this->config->matrixUrl . $url, (array)$data, array_merge($this->header, $additionalHeaders));
         $code = $response->getStatusCode();
         if ($code != 200) {
             throw new Exception("Request failed: " . $url, $code);
@@ -49,7 +60,7 @@ class Http
 
     public function put(string $url, stdClass $data): stdClass
     {
-        $response = $this->client->put($this->config->baseUrl . $url, (array)$data, $this->header);
+        $response = $this->client->put($this->config->matrixUrl . $url, (array)$data, $this->header);
         $code = $response->getStatusCode();
         if ($code != 200) {
             throw new Exception("Request failed: " . $url,  $code);
@@ -59,7 +70,7 @@ class Http
 
     public function get(string $url): stdClass
     {
-        $response = $this->client->get($this->config->baseUrl . $url, $this->header);
+        $response = $this->client->get($this->config->matrixUrl . $url, $this->header);
         $code = $response->getStatusCode();
         if ($code != 200) {
             throw new Exception("Request failed: " . $url, $code);

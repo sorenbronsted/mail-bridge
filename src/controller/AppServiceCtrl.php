@@ -138,15 +138,6 @@ class AppServiceCtrl
 
         $room = Room::getOneBy(['id' => $event->room_id]);
         $recipients = $room->getMailRecipients($sender);
-        if ($event->content->msgtype == 'm.text') {
-            $this->imap->sendMessage($sender, $recipients, $room->name, $event->content->body, $event->content->formatted_body ?? '');
-        }
-        else if (isset($event->content->url)) {
-            //TODO P1 better handling of url types https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes
-            $this->imap->sendMessage($sender, $recipients, $room->name, $event->content->url);
-        }
-        else {
-            Log::error("Can't handle message type: " . $event->content->msgtype);
-        }
+        $this->imap->sendMessage($sender, $recipients, $room->name, $event);
     }
 }

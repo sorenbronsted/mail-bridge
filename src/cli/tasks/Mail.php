@@ -2,35 +2,34 @@
 
 namespace bronsted;
 
-use DirectoryIterator;
 use Exception;
 use Throwable;
 
-/* Less secure apps needs be enabled to be able to login
+/* Less secure apps needs be enabled to be able to login into gmail.com
    https://support.google.com/accounts/answer/6010255?hl=en
  */
 
 class Mail
 {
+    private AppServiceConfig $config;
     private FileStore $fileStore;
     private ImapCtrl  $imap;
 
-    public function __construct(FileStore $filestore, ImapCtrl $imap)
+    public function __construct(AppServiceConfig $config, FileStore $filestore, ImapCtrl $imap)
     {
+        $this->config = $config;
         $this->fileStore = $filestore;
         $this->imap = $imap;
     }
 
     public function run(array $args)
     {
-        $lock = '/var/tmp/mxmail.pid';
-
-        if (file_exists($lock)) {
+        if (file_exists($this->config->pidFile)) {
             Log::info('Allready running, bye');
             return;
         }
         try {
-            $ok = @file_put_contents($lock, getmypid());
+            $ok = @file_put_contents($this->config->pidFile, getmypid());
             if (!$ok) {
                 throw new Exception('Writing lock file failed');
             }
@@ -40,8 +39,8 @@ class Mail
         } catch (Throwable $t) {
             Log::error($t);
         } finally {
-            if (file_exists($lock)) {
-                unlink($lock);
+            if (file_exists($this->config->pidFile)) {
+                unlink($this->config->pidFile);
             }
         }
     }
@@ -51,9 +50,6 @@ class Mail
         $files = $this->fileStore->getDir(FileStore::Outbox);
         foreach ($files as $fileInfo) {
             try {
-                if ($fileInfo->isDir()) {
-                    continue;
-                }
                 $this->imap->send($fileInfo);
                 unlink($fileInfo->getPathname());
             } catch (Throwable $t) {

@@ -57,16 +57,13 @@ class ImapCtrl
         $account->save();
     }
 
-    public function sendMessage(User $sender, DbCursor $recipients, string $subject, string $text, string $html = '')
+    public function sendMessage(User $sender, DbCursor $recipients, string $subject, stdClass $event)
     {
-        //TODO P1 attachments
         $data = new stdClass();
         $data->sender = $sender;
         $data->recipients = [];
         $data->subject = $subject;
-        $data->text = $text;
-        $data->html = $html;
-        $data->account = Account::getOneBy(['user_uid' => $sender->uid]);
+        $data->event = $event;
 
         // Extract model objects so it can be serialized
         foreach ($recipients as $recipient) {
@@ -81,7 +78,11 @@ class ImapCtrl
     {
         $file = $fileInfo->openFile('r');
         $data = unserialize($file->fread($file->getSize()));
-        $this->smtp->sendByAccount($this->config, $data);
+
+        $account = Account::getOneBy(['user_uid' => $data->sender->uid]);
+        $data->accountData = $account->getAccountData($this->config);
+
+        $this->smtp->sendByAccount($data);
     }
 
     public function import(SplFileInfo $fileInfo)

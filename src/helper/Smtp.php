@@ -3,14 +3,18 @@
 namespace bronsted;
 
 use PHPMailer\PHPMailer\PHPMailer;
+use Exception;
+use SplFileObject;
 use stdClass;
 
 class Smtp
 {
-    private $mailer;
+    private PHPMailer $mailer;
+    private Http $http;
 
-    public function __construct(PHPMailer $mailer)
+    public function __construct(PHPMailer $mailer, Http $http)
     {
+        $this->http = $http;
         $this->mailer = $mailer;
         $this->mailer->isSMTP();
         $this->mailer->SMTPAuth   = true;
@@ -67,13 +71,31 @@ class Smtp
         $this->mailer->smtpConnect();
     }
 
-    public function sendByAccount(AppServiceConfig $config, stdClass $data)
+    public function addAttachment(string $name, string $path)
     {
-        $accountData = $data->account->getAccountData($config);
-        $this->open($accountData);
+        $stream = $this->http->getStream($path);
+        $file = new SplFileObject('/tmp/' . uniqid(), 'w');
+        $file->fwrite($stream);
+        $this->mailer->addAttachment($file->getPathname(), $name);
+    }
+
+    public function sendByAccount(stdClass $data)
+    {
+        $this->open($data->accountData);
         $this->from($data->sender);
         $this->subject($data->subject);
-        $this->body($data->text, $data->html);
+
+        if ($data->event->content->msgtype == 'm.text') {
+            $this->body($data->event->content->body, $data->event->content->formatted_body);
+        }
+        else if (isset($data->event->content->url)) {
+            //TODO P2 better handling of url types https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes
+            $this->addAttachment($data->event->content->body, $data->event->content->url);
+        }
+        else {
+            throw new Exception("Can't handle message type: " . $data->event->content->msgtype);
+        }
+
         foreach($data->recipients as $recipient) {
             $this->mailer->addAddress($recipient->email, $recipient->name);
         }

@@ -62,4 +62,32 @@ class Fixtures
         $fixture->password = '5';
         return $fixture;
     }
+
+    public static function event(): stdClass
+    {
+        $event = new stdClass();
+        $event->content = new stdClass();
+        $event->content->msgtype = 'm.text';
+        $event->content->body = 'test';
+        $event->content->formatted_body = 'test html';
+        return $event;
+    }
+
+    public static function eventUrl(): stdClass
+    {
+        $event = new stdClass();
+        $event->content = new stdClass();
+        $event->content->msgtype = 'm.file';
+        $event->content->url = 'http://somewhere.net/me.png';
+        $event->content->body = 'me';
+        return $event;
+    }
+
+    public static function eventUnknown(): stdClass
+    {
+        $event = new stdClass();
+        $event->content = new stdClass();
+        $event->content->msgtype = 'm.xx';
+        return $event;
+    }
 }

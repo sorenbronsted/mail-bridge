@@ -98,4 +98,44 @@ class HttpTest extends TestCase
         $this->expectExceptionCode(500);
         $http->postStream('/somewhere', 'application/json', $stream);
     }
+
+    public function testGetStreamOk()
+    {
+        $fixture = new stdClass();
+        $fixture->key = 'value';
+
+        $mock = $this->mock(HttpClient::class);
+        $mock->method('get')->willReturn(
+            $this->createResponse(
+                200,(new StreamFactory())
+                    ->createStream(json_encode($fixture))
+                )
+            );
+
+        $http = $this->container->get(Http::class);
+        $result = json_decode(
+            $http->getStream('/somewhere/file.json')->getContents()
+        );
+        $this->assertEquals($fixture, $result);
+    }
+
+    public function testGetStreamFail()
+    {
+        $fixture = new stdClass();
+        $fixture->key = 'value';
+
+        $mock = $this->mock(HttpClient::class);
+        $mock->method('get')->willReturn(
+            $this->createResponse(
+                500, (new StreamFactory())
+                    ->createStream(json_encode($fixture))
+                )
+            );
+
+        $http = $this->container->get(Http::class);
+        $this->expectExceptionCode(500);
+        $result = json_decode(
+            $http->getStream('/somewhere/file.json')->getContents()
+        );
+    }
 }
