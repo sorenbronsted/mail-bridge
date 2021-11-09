@@ -57,4 +57,19 @@ class UserTest extends TestCase
         Fixtures::room();
         $this->assertEquals(1, count(User::getNonePuppets()));
     }
+
+    public function testGetOrCreate()
+    {
+        $id = '@me:somewhere.net';
+        $user = User::getOrCreate($id);
+        $this->assertEquals($id, $user->id);
+        $this->assertEquals($id, $user->name);
+    }
+
+    public function testUserName()
+    {
+        $user = new User();
+        $this->expectExceptionMessageMatches('/not be empty/');
+        $user->save();
+    }
 }

@@ -61,6 +61,21 @@ class User extends ModelObject
         return self::getObjects($sql, []);
     }
 
+    public static function getOrCreate(string $id): User
+    {
+        $user = null;
+        try {
+            $user = self::getOneBy(['id' => $id]);
+        }
+        catch(NotFoundException $e) {
+            $user = new User();
+            $user->id = $id;
+            $user->name = $id;
+            $user->save();
+        }
+        return $user;
+    }
+
     public static function create(string $name, string $email, string $domain): User
     {
         $user = new User($name, $email, $domain);

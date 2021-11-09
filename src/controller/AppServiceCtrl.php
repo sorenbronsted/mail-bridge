@@ -94,7 +94,7 @@ class AppServiceCtrl
         try {
             Room::getOneBy(['id' => $event->room_id]);
         } catch (NotFoundException $e) {
-            $creator = User::getOneBy(['id' => $event->user_id]);
+            $creator = User::getOrCreate($event->user_id);
             Room::create($event->room_id, '', $creator);
         }
     }
