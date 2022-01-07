@@ -8,10 +8,10 @@ class Fixtures
 {
     public static function clean()
     {
-        $con = ModelObject::getConnection();
-        $tables = ['user', 'room', 'member', 'account'];
+        $con = Db::getConnection();
+        $tables = ['user', 'room', 'member', 'account', 'mail'];
         foreach($tables as $table) {
-            $con->exec("delete from $table");
+            $con->execute("delete from $table");
         }
     }
 
@@ -48,6 +48,19 @@ class Fixtures
         return $account;
     }
 
+    public static function mail(Account $account, FileStore $store, string $fixtureMail): Mail
+    {
+        $mail = new Mail();
+        $mail->id = '1';
+        $mail->file_id = uniqid();
+        $mail->action = Mail::ActionImport;
+        $mail->account_uid = $account->uid;
+        $mail->save();
+
+        $store->write($mail->file_id, file_get_contents(__DIR__ . '/data/' . $fixtureMail));
+        return $mail;
+    }
+
     public static function accountData(): AccountData
     {
         return new AccountData(self::imapData());
@@ -65,18 +78,12 @@ class Fixtures
 
     public static function event(): stdClass
     {
-        $event = new stdClass();
-        $event->content = new stdClass();
-        $event->content->msgtype = 'm.text';
-        $event->content->body = 'test';
-        $event->content->formatted_body = 'test html';
-        return $event;
+        return json_decode(file_get_contents(__DIR__ . '/data/event.json'));
     }
 
     public static function eventUrl(): stdClass
     {
-        $event = new stdClass();
-        $event->content = new stdClass();
+        $event = json_decode(file_get_contents(__DIR__ . '/data/event.json'));
         $event->content->msgtype = 'm.file';
         $event->content->url = 'http://somewhere.net/me.png';
         $event->content->body = 'me';

@@ -23,3 +23,7 @@ pidFile: /var/run/mail-bridge.pid
 
 # Root of file store
 fileStoreRoot: /var/tmp/mail
+
+# Database url (https://www.php.net/manual/en/book.pdo.php)
+databaseUrl: sqlite:db/db.sqlite
+

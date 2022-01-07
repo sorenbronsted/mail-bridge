@@ -1,6 +1,9 @@
 Alle P1 skal laves inden egen drift:
 
 P1:
+ - Erstat zbateson og phpmailer med symfony mailer og mime
+ - brug reactphp og med task, som henter, importer og sender mails
+ - upload mail med http post, hvor body er mime og som gemmes lige som fetch fra imap
  - Søg efter TODO P1
 
 P2:

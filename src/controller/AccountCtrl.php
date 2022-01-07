@@ -72,12 +72,12 @@ class AccountCtrl extends ModelObjectCrudCtrl
         return Account::getBy(['user_uid' => $user->uid]);
     }
 
-    protected function getObjectByUid(int $uid): ModelObject
+    protected function getObjectByUid(int $uid): DbObject
     {
         return Account::getByUid($uid);
     }
 
-    protected function populateObject(stdClass $data, User $user): ModelObject
+    protected function populateObject(stdClass $data, User $user): DbObject
     {
         $account = null;
         if ($data->uid > 0) {
@@ -93,12 +93,12 @@ class AccountCtrl extends ModelObjectCrudCtrl
         return $account;
     }
 
-    protected function getRouteToObject(ModelObject $selected): string
+    protected function getRouteToObject(DbObject $selected): string
     {
         return '/account/' . $selected->uid . '/show';
     }
 
-    protected function getRouteToObjects(ModelObject $selected): string
+    protected function getRouteToObjects(DbObject $selected): string
     {
         return '/account/user';
     }

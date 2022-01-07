@@ -10,14 +10,12 @@ use Slim\Middleware\ContentLengthMiddleware;
 function bootstrap(): App
 {
     $container = new Container();
+    config($container);
     logging($container);
-    database();
+    database($container);
     client($container);
 
-    appService($container);
-
     $app = Bridge::create($container);
-
     $app->add(new ContentLengthMiddleware());
     $app->addRoutingMiddleware();
     $app->addBodyParsingMiddleware(['application/json' => static function ($input) {

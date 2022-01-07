@@ -4,7 +4,6 @@ namespace bronsted;
 
 use Exception;
 use ReflectionClass;
-use SplFileObject;
 use Symfony\Component\Yaml\Yaml;
 
 class AppServiceConfig
@@ -17,6 +16,7 @@ class AppServiceConfig
     public string $cookieName;
     public string $pidFile;
     public string $fileStoreRoot;
+    public string $databaseUrl;
 
     public function __construct(string $yamlFilename)
     {

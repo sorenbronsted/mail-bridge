@@ -4,9 +4,7 @@ namespace bronsted;
 
 use DI\Container;
 
-use function DI\env;
-
-function appService(Container $container)
+function config(Container $container)
 {
     $filename = dirname(__DIR__) . "/mail-bridge.yaml";
     $config = new AppServiceConfig($filename);

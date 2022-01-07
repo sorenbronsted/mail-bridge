@@ -9,7 +9,7 @@ use Throwable;
    https://support.google.com/accounts/answer/6010255?hl=en
  */
 
-class Mail
+class MailTask
 {
     private AppServiceConfig $config;
     private FileStore $fileStore;
@@ -47,7 +47,7 @@ class Mail
 
     private function send()
     {
-        $files = $this->fileStore->getDir(FileStore::Outbox);
+        $files = $this->fileStore->getFiles(FileStore::Outbox);
         foreach ($files as $fileInfo) {
             try {
                 $this->imap->send($fileInfo);
@@ -73,7 +73,7 @@ class Mail
 
     private function import()
     {
-        $files = $this->fileStore->getDir(FileStore::Inbox);
+        $files = $this->fileStore->getFiles(FileStore::Inbox);
         foreach ($files as $fileInfo) {
             try {
                 $this->imap->import($fileInfo);

@@ -4,7 +4,7 @@ namespace bronsted;
 
 use Exception;
 
-class User extends ModelObject
+class User extends DbObject
 {
     const PUPPET_PREFIX = '@mail_';
     protected ?string $id;
@@ -13,6 +13,7 @@ class User extends ModelObject
 
     public function __construct(?string $name = null, ?string $email = null, ?string $domain = null, ?string $local_id = null)
     {
+        parent::__construct();
         $this->name = trim($name);
         $this->email = strtolower($email);
 

@@ -2,96 +2,51 @@
 
 namespace bronsted;
 
-use DateTime;
 use Exception;
 use SplFileInfo;
-use SplFileObject;
-use stdClass;
-use ZBateson\MailMimeParser\Header\AddressHeader;
-use ZBateson\MailMimeParser\Header\DateHeader;
+use Throwable;
 use ZBateson\MailMimeParser\Header\HeaderConsts;
 use ZBateson\MailMimeParser\Header\Part\AddressPart;
 use ZBateson\MailMimeParser\Message;
 
-class ImapCtrl
+class ImportMail
 {
-    private AddressHeader $to;
-    private User $from;
-    private MatrixClient $client;
-    private Message $message;
-    private DateHeader $ts;
     private AppServiceConfig $config;
-    private Imap $imap;
-    private FileStore $fileStore;
-    private Smtp $smtp;
+    private FileStore $store;
+    private MatrixClient $client;
 
-    public function __construct(AppServiceConfig $config, MatrixClient $client, Imap $imap, FileStore $fileStore, Smtp $smtp)
+    public function __construct(AppServiceConfig $config, FileStore $store, MatrixClient $client)
     {
         $this->config = $config;
+        $this->store = $store;
         $this->client = $client;
-        $this->imap   = $imap;
-        $this->fileStore   = $fileStore;
-        $this->smtp   = $smtp;
     }
 
-    public function fetch(Account $account)
+    public function run()
     {
-        $accountData = $account->getAccountData($this->config);
-        $this->imap->open($accountData);
-
-        // sort mailbox by date with newest first
-        $this->imap->sort(SORTDATE, true);
-
-        $max = $this->imap->count();
-        for ($i = 1; $i <= $max; $i++) {
-            $header = $this->imap->header($i);
-            if ($header->udate < $account->updated->format('U')) {
-                break;
+        // This process one mail at a time because it is expected to run offent
+        $mail = Mail::getBy(['action' => Mail::ActionImport, 'fail_code' => 0])->current();
+        if (!$mail) {
+            // Retry failed imports
+            $mail = Mail::getBy(['action' => Mail::ActionImport])->current();
+            if (!$mail) {
+                return;
             }
-            $filename = $account->uid . '-' . uniqid() . '.mime';
-            $message = $this->imap->message($i);
-            $this->fileStore->write(FileStore::Inbox, $filename, $message);
         }
-        $this->imap->close();
-        $account->updated = new DateTime();
-        $account->save();
+        try {
+            $this->import($mail);
+            $mail->destroy($this->store);
+        } catch (Throwable $t) {
+            Log::error($t);
+            $mail->fail_code = $t->getCode();
+            $mail->save();
+        }
     }
 
-    public function sendMessage(User $sender, DbCursor $recipients, string $subject, stdClass $event)
+    private function import(Mail $mail)
     {
-        $data = new stdClass();
-        $data->sender = $sender;
-        $data->recipients = [];
-        $data->subject = $subject;
-        $data->event = $event;
-
-        // Extract model objects so it can be serialized
-        foreach ($recipients as $recipient) {
-            $data->recipients[] = $recipient;
-        }
-
-        $filename = uniqid() . '.ser';
-        $this->fileStore->write(FileStore::Outbox, $filename, serialize($data));
-    }
-
-    public function send(SplFileInfo $fileInfo)
-    {
-        $file = $fileInfo->openFile('r');
-        $data = unserialize($file->fread($file->getSize()));
-
-        $account = Account::getOneBy(['user_uid' => $data->sender->uid]);
-        $data->accountData = $account->getAccountData($this->config);
-
-        $this->smtp->sendByAccount($data);
-    }
-
-    public function import(SplFileInfo $fileInfo)
-    {
-        $parts = explode('-', $fileInfo->getFilename());
-        if (count($parts) != 2) {
-            throw new Exception('Wrong filename form: ' . $fileInfo->getFilename());
-        }
-        $account = Account::getByUid($parts[0]);
+        $fileInfo = $mail->getFileInfo($this->store);
+        $account = Account::getByUid($mail->account_uid);
         $this->parse($fileInfo);
 
         if (count($this->to->getAddresses()) > 1) {
@@ -108,9 +63,12 @@ class ImapCtrl
         $fh = $fileInfo->openFile('r');
         $this->message = Message::from($fh);
 
+        //TODO parse to stdclass
         $this->to = $this->message->getHeader(HeaderConsts::TO);
-
         $this->ts = $this->message->getHeader(HeaderConsts::DATE);
+        if (empty($this->to) || empty($this->ts) || empty($this->message->getHeader(HeaderConsts::FROM))) {
+            throw new Exception('File is not valid', 1);
+        }
 
         $this->subject = $this->message->getHeader(HeaderConsts::SUBJECT);
         if (is_object($this->subject)) {
@@ -121,7 +79,7 @@ class ImapCtrl
         if ($idx !== false) {
             $this->subject = trim(substr($this->subject, $idx + 1));
         }
-        if (empty($this->subject)) {
+        if (empty($this->subject) && !empty($this->ts)) {
             $datetime = $this->ts->getDateTime();
             $this->subject = 'No subject ' . $datetime->format('Y-m-d H:i');
         }

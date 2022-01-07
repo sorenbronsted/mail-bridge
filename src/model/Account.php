@@ -6,7 +6,7 @@ use DateTime;
 use Exception;
 use stdClass;
 
-class Account extends ModelObject
+class Account extends DbObject
 {
     // Account verification states
     const StateNone = 0;
@@ -25,7 +25,7 @@ class Account extends ModelObject
     {
         //Ensure updated has a date
         if ($this->uid == 0 && !isset($this->updated)) {
-            $this->updated = new DateTime('yesterday');
+            $this->updated = new DateTime();
         }
         parent::save();
     }

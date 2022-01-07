@@ -67,6 +67,7 @@ class AppServiceCtrlTest extends TestCase
         $data->events = [];
 
         $event = new stdClass();
+        $event->event_id = '1';
         $event->type = 'm.room.create';
         $event->room_id = '1';
         $event->user_id = $user->id;
@@ -89,6 +90,7 @@ class AppServiceCtrlTest extends TestCase
         $data->events = [];
 
         $event = new stdClass();
+        $event->event_id = '1';
         $event->type = 'm.room.name';
         $event->room_id = $room->id;
         $event->content = (object)['name' =>'New name'];
@@ -116,6 +118,7 @@ class AppServiceCtrlTest extends TestCase
         $data->events = [];
 
         $event = new stdClass();
+        $event->event_id = '1';
         $event->type = 'm.room.member';
         $event->room_id = $room->id;
         $event->content = (object)['membership' =>'invite', 'displayname' => $user->name];
@@ -142,6 +145,7 @@ class AppServiceCtrlTest extends TestCase
         $data->events = [];
 
         $event = new stdClass();
+        $event->event_id = '1';
         $event->type = 'm.room.member';
         $event->room_id = $room->id;
         $event->content = (object)['membership' =>'invite', 'displayname' => 'Yrsa Humbuk'];
@@ -175,6 +179,7 @@ class AppServiceCtrlTest extends TestCase
         $data->events = [];
 
         $event = new stdClass();
+        $event->event_id = '1';
         $event->type = 'm.room.message';
         $event->sender = $sender->id;
         $event->room_id = $room->id;
@@ -208,6 +213,7 @@ class AppServiceCtrlTest extends TestCase
         $data->events = [];
 
         $event = new stdClass();
+        $event->event_id = '1';
         $event->type = 'm.room.message';
         $event->sender = $sender->id;
         $event->room_id = $room->id;

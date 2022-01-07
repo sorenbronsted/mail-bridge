@@ -2,7 +2,7 @@
 
 namespace bronsted;
 
-class Room extends ModelObject
+class Room extends DbObject
 {
     protected ?string $id;
     protected ?string $name;
@@ -11,6 +11,7 @@ class Room extends ModelObject
 
     public function __construct(?User $creator = null, ?string $id = null, ?string $name = null, ?string $alias = null)
     {
+        parent::__construct();
         $this->creator_uid = $creator->uid ?? null;
         $this->id = $id;
         $this->name = $name;

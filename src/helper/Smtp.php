@@ -74,6 +74,7 @@ class Smtp
     public function addAttachment(string $name, string $path)
     {
         $stream = $this->http->getStream($path);
+        //TODO P1 Use SqlTempFile
         $file = new SplFileObject('/tmp/' . uniqid(), 'w');
         $file->fwrite($stream);
         $this->mailer->addAttachment($file->getPathname(), $name);

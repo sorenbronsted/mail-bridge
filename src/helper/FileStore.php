@@ -5,63 +5,57 @@ namespace bronsted;
 use DirectoryIterator;
 use Exception;
 use SplFileInfo;
+use SplFileObject;
 use Symfony\Component\Finder\Finder;
 
 class FileStore
 {
-    const Inbox = 0;
-    const Outbox = 1;
-    const FailImport = 2;
-    const FailSend = 3;
-
     private string $root;
-    private static array $dirs = ['in', 'out', 'fail/import', 'fail/send'];
 
     public function __construct(AppServiceConfig $config)
     {
         $this->root = $config->fileStoreRoot;
-        $this->ensureDirs();
+        $this->ensureDir();
     }
 
-    public function getDir(int $id): Finder
+    public function getFileInfo(string $file): SplFileInfo
     {
-        return Finder::create()->files()->in($this->dirname($id));
+        $filename = $this->root . '/' . $file;
+        return new SplFileInfo($this->root . '/' . $file);
     }
 
-    public function write(int $id, string $filename, string $content): void
+    public function getFiles(): Finder
     {
-        $dirname = $this->dirname($id);
-        file_put_contents($dirname . '/' . $filename, $content);
+        return Finder::create()->files()->in($this->root);
     }
 
-    public function move(SplFileInfo $file, int $toId)
+    public function write(string $filename, string $content): void
     {
-        $to = $this->dirname($toId);
-        rename($file->getPathname(), $to . '/' . $file->getFilename());
+        $fileInfo = $this->getFileInfo($filename);
+        $file = $fileInfo->openFile('w');
+        $file->fwrite($content);
+    }
+
+    public function remove(string $name)
+    {
+        $file = $this->getFileInfo($name);
+        $ok = @unlink($file->getPathname());
+        if (!$ok) {
+            throw new Exception("Remove file failed: " . $file->getPathname());
+        }
     }
 
     public function cleanAll(): void
     {
-        foreach(array_keys(self::$dirs) as $id) {
-            $dirname = $this->dirname($id);
-            array_map('unlink', glob($dirname . '/*'));
-        }
+        array_map('unlink', glob($this->root . '/*'));
     }
 
-    private function dirname(int $id): string
+    private function ensureDir()
     {
-        if ($id < 0 || $id >= count(self::$dirs)) {
-            throw new Exception('Unknown dir id: ' . $id );
-        }
-        return $this->root . '/' . self::$dirs[$id];
-    }
-
-    private function ensureDirs()
-    {
-        foreach(array_keys(self::$dirs) as $id) {
-            $dirname = $this->dirname($id);
-            if (!file_exists($dirname)) {
-                mkdir($dirname, 0755, true);
+        if (!file_exists($this->root)) {
+            $ok = @mkdir($this->root, 0755, true);
+            if (!$ok) {
+                throw new Exception("Create dir failed: $this->root");
             }
         }
     }

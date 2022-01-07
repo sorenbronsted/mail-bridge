@@ -6,13 +6,14 @@
                 "src/cli/tasks",
                 "src/controller",
                 "src/helper",
-                "src/model"
+                "src/model",
+                "src/task"
             ]
         },
         "files": [
             "config/bootstrap.php",
             "config/routes.php",
-            "config/appservice.php",
+            "config/config.php",
             "config/logging.php",
             "config/database.php",
             "config/user.php",
@@ -37,7 +38,7 @@
         "slim/psr7": "^1.4",
         "php-di/php-di": "^6.3",
         "monolog/monolog": "^2.2",
-        "bronsted/orm": "^1.0",
+        "bronsted/orm": "^2.0",
         "juststeveking/http-slim": "^1.2",
         "nyholm/psr7": "^1.4",
         "symfony/http-client": "^5.3",

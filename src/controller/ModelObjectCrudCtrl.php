@@ -45,7 +45,7 @@ abstract class ModelObjectCrudCtrl
     public function delete(ResponseInterface $response, int $uid): MessageInterface
     {
         $selected = $this->getObjectByUid($uid);
-        $selected->destroy();
+        $selected->delete();
         return $response->withHeader('Location', $this->getRouteToObjects($selected))->withStatus(302);
     }
 
@@ -82,10 +82,10 @@ abstract class ModelObjectCrudCtrl
     }
 
     abstract protected function getObjectsByUser(User $user): DbCursor;
-    abstract protected function getObjectByUid(int $uid): ModelObject;
-    abstract protected function populateObject(stdClass $data, User $user): ModelObject;
-    abstract protected function getRouteToObject(ModelObject $selected): string;
-    abstract protected function getRouteToObjects(ModelObject $selected): string;
+    abstract protected function getObjectByUid(int $uid): DbObject;
+    abstract protected function populateObject(stdClass $data, User $user): DbObject;
+    abstract protected function getRouteToObject(DbObject $selected): string;
+    abstract protected function getRouteToObjects(DbObject $selected): string;
     abstract protected function getEditTemplate(stdClass $data): Template;
     abstract protected function getShowTemplate(stdClass $data): Template;
 }
