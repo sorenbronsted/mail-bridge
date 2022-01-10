@@ -71,6 +71,7 @@ class Fixtures
         $fixture = new stdClass();
         $fixture->imap_url = '1';
         $fixture->smtp_host = '2';
+        $fixture->smtp_port = '3';
         $fixture->user = '4';
         $fixture->password = '5';
         return $fixture;
@@ -85,7 +86,7 @@ class Fixtures
     {
         $event = json_decode(file_get_contents(__DIR__ . '/data/event.json'));
         $event->content->msgtype = 'm.file';
-        $event->content->url = 'http://somewhere.net/me.png';
+        $event->content->url = 'http://nowhere/me.png';
         $event->content->body = 'me';
         return $event;
     }

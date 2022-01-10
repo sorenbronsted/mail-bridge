@@ -2,7 +2,9 @@
 
 namespace bronsted;
 
+use FastRoute\RouteParser\Std;
 use SplFileInfo;
+use stdClass;
 use Throwable;
 
 class SendMail
@@ -23,6 +25,7 @@ class SendMail
         // Start with new mails
         $mail = Mail::getBy(['action' => Mail::ActionSend, 'fail_code' => 0])->current();
         if (!$mail) {
+            // TODO P1 retry in a round robin way by getting the oldest and update a timestamp on mail with last try
             // Retry failed mails
             $mail = Mail::getBy(['action' => Mail::ActionSend])->current();
             if (!$mail) {
@@ -31,24 +34,12 @@ class SendMail
         }
 
         try {
-            $this->send($mail);
+            $this->smtp->send($mail, $this->config, $this->store);
             $mail->destroy($this->store);
         } catch (Throwable $t) {
             Log::error($t);
             $mail->fail_code = $t->getCode();
             $mail->save();
         }
-    }
-
-    public function send(Mail $mail)
-    {
-        $fileInfo = $mail->getFileInfo($this->store);
-        $file = $fileInfo->openFile('r');
-        $data = unserialize($file->fread($file->getSize()));
-
-        $account = Account::getOneBy(['user_uid' => $data->sender->uid]);
-        $data->accountData = $account->getAccountData($this->config);
-
-        $this->smtp->sendByAccount($data);
     }
 }

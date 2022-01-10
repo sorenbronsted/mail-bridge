@@ -256,6 +256,7 @@ class AccountCtrlTest extends TestCase
         $fixture->name = 'fixture 1';
         $fixture->imap_url = 'fixture 2';
         $fixture->smtp_host = 'fixture 3';
+        $fixture->smtp_port = '17';
         $fixture->user = 'fixture 4';
         $fixture->password = 'fixture 5';
 

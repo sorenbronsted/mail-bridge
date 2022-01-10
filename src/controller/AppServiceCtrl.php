@@ -10,10 +10,12 @@ use Throwable;
 
 class AppServiceCtrl
 {
+    private Http $http;
     private FileStore $store;
 
-    public function __construct(FileStore $store)
+    public function __construct(Http $http, FileStore $store)
     {
+        $this->http = $http;
         $this->store = $store;
     }
 
@@ -138,27 +140,6 @@ class AppServiceCtrl
 
         $room = Room::getOneBy(['id' => $event->room_id]);
         $recipients = $room->getMailRecipients($sender);
-        $this->sendMessage($sender, $recipients, $room->name, $event);
-    }
-
-    public function sendMessage(User $sender, DbCursor $recipients, string $subject, stdClass $event)
-    {
-        $data = new stdClass();
-        $data->sender = $sender;
-        $data->recipients = [];
-        $data->subject = $subject;
-        $data->event = $event;
-
-        // Extract model objects so it can be serialized
-        foreach ($recipients as $recipient) {
-            $data->recipients[] = $recipient;
-        }
-
-        $filename = uniqid() . '.ser';
-        $this->store->write($filename, serialize($data));
-
-        $account = Account::getOneBy(['user_uid' => $sender->uid]);
-        $mail = new Mail($event->event_id, $filename, Mail::ActionSend, $account->uid);
-        $mail->save();
+        Mail::createFromEvent($this->http, $this->store, $sender, $recipients, $room->name, $event);
     }
 }

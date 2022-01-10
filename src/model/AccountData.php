@@ -8,6 +8,7 @@ class AccountData
 {
     public string $imap_url = '';
     public string $smtp_host = '';
+    public string $smtp_port = '';
     public string $user = '';
     public string $password = '';
 
@@ -18,6 +19,7 @@ class AccountData
         }
         $this->imap_url  = $data->imap_url;
         $this->smtp_host = $data->smtp_host;
+        $this->smtp_port = $data->smtp_port;
         $this->user      = $data->user;
         $this->password  = $data->password;
     }

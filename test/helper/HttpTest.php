@@ -106,11 +106,10 @@ class HttpTest extends TestCase
 
         $mock = $this->mock(HttpClient::class);
         $mock->method('get')->willReturn(
-            $this->createResponse(
-                200,(new StreamFactory())
-                    ->createStream(json_encode($fixture))
-                )
-            );
+            $this->createResponse(200,
+                (new StreamFactory())->createStream(json_encode($fixture))
+            )
+        );
 
         $http = $this->container->get(Http::class);
         $result = json_decode(

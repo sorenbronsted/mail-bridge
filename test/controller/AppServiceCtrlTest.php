@@ -2,10 +2,18 @@
 
 namespace bronsted;
 
+use Slim\Psr7\Factory\StreamFactory;
 use stdClass;
 
 class AppServiceCtrlTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->mock(Http::class)
+            ->method('getStream')->willReturn((new StreamFactory())->createStream('test'));
+    }
+
     public function testInvalidCredentials()
     {
         $user = Fixtures::user();
@@ -208,7 +216,7 @@ class AppServiceCtrlTest extends TestCase
         $account->setAccountData($config, Fixtures::accountData());
         $account->save();
 
-        $url = 'mxc://somehwhere.net/me.jpg';
+        $url = 'mxc://nowhere/me.jpg';
         $data = new stdClass();
         $data->events = [];
 

@@ -9,6 +9,7 @@ class SendMailTest extends TestCase
 {
     private AppServiceConfig $config;
     private FileStore $store;
+    private Http $http;
     private TestLogger $logger;
 
     protected function setUp():void
@@ -20,6 +21,7 @@ class SendMailTest extends TestCase
 
         $this->config = $this->container->get(AppServiceConfig::class);
         $this->store = $this->container->get(FileStore::class);
+        $this->http = $this->container->get(Http::class);
     }
 
     public function testRunDefault()
@@ -30,10 +32,9 @@ class SendMailTest extends TestCase
         $account->save();
 
         $smtpMock = $this->mock(Smtp::class);
-        $smtpMock->expects($this->once())->method('sendByAccount');
+        $smtpMock->expects($this->once())->method('send');
 
-        $ctrl = $this->container->get(AppServiceCtrl::class);
-        $ctrl->sendMessage($user, User::getAll(), 'Subject', Fixtures::event());
+        Mail::createFromEvent($this->http, $this->store, $user, User::getAll(), 'Subject', Fixtures::event());
 
         $task = $this->container->get(SendMail::class);
         $task->run();
@@ -64,10 +65,9 @@ class SendMailTest extends TestCase
         $account->save();
 
         $smtpMock = $this->mock(Smtp::class);
-        $smtpMock->expects($this->once())->method('sendByAccount')->willThrowException(new Exception('Some error', 17));
+        $smtpMock->expects($this->once())->method('send')->willThrowException(new Exception('Some error', 17));
 
-        $ctrl = $this->container->get(AppServiceCtrl::class);
-        $ctrl->sendMessage($user, User::getAll(), 'Subject', Fixtures::event());
+        Mail::createFromEvent($this->http, $this->store, $user, User::getAll(), 'Subject', Fixtures::event());
 
         $task = $this->container->get(SendMail::class);
         $task->run();

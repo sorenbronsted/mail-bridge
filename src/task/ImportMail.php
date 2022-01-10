@@ -3,7 +3,8 @@
 namespace bronsted;
 
 use Exception;
-use SplFileInfo;
+
+use stdClass;
 use Throwable;
 use ZBateson\MailMimeParser\Header\HeaderConsts;
 use ZBateson\MailMimeParser\Header\Part\AddressPart;
@@ -45,89 +46,89 @@ class ImportMail
 
     private function import(Mail $mail)
     {
-        $fileInfo = $mail->getFileInfo($this->store);
+        $message = $mail->parse($this->store);
+        $header = $this->parse($message);
         $account = Account::getByUid($mail->account_uid);
-        $this->parse($fileInfo);
 
-        if (count($this->to->getAddresses()) > 1) {
-            $room = $this->getOrCreateMultiUserRoom($account);
+        if (count($header->to->getAddresses()) > 1) {
+            $room = $this->getOrCreateMultiUserRoom($account, $header);
         } else {
-            $room = $this->getOrCreateDirectUserRoom($account);
+            $room = $this->getOrCreateDirectUserRoom($account, $header);
         }
 
-        $this->client->send($room, $this->from, $this->message, $this->ts->getDateTime());
+        $this->client->send($room, $header->from, $message, $header->ts->getDateTime());
     }
 
-    private function parse(SplFileInfo $fileInfo)
+    private function parse(Message $message): stdClass
     {
-        $fh = $fileInfo->openFile('r');
-        $this->message = Message::from($fh);
+        $result = new stdClass();
 
         //TODO parse to stdclass
-        $this->to = $this->message->getHeader(HeaderConsts::TO);
-        $this->ts = $this->message->getHeader(HeaderConsts::DATE);
-        if (empty($this->to) || empty($this->ts) || empty($this->message->getHeader(HeaderConsts::FROM))) {
+        $result->to = $message->getHeader(HeaderConsts::TO);
+        $result->ts = $message->getHeader(HeaderConsts::DATE);
+        if (empty($result->to) || empty($result->ts) || empty($message->getHeader(HeaderConsts::FROM))) {
             throw new Exception('File is not valid', 1);
         }
 
-        $this->subject = $this->message->getHeader(HeaderConsts::SUBJECT);
-        if (is_object($this->subject)) {
-            $this->subject = $this->subject->getValue();
+        $result->subject = $message->getHeader(HeaderConsts::SUBJECT);
+        if (is_object($result->subject)) {
+            $result->subject = $result->subject->getValue();
         }
 
-        $idx = strrpos($this->subject, ':');
+        $idx = strrpos($result->subject, ':');
         if ($idx !== false) {
-            $this->subject = trim(substr($this->subject, $idx + 1));
+            $result->subject = trim(substr($result->subject, $idx + 1));
         }
-        if (empty($this->subject) && !empty($this->ts)) {
-            $datetime = $this->ts->getDateTime();
-            $this->subject = 'No subject ' . $datetime->format('Y-m-d H:i');
+        if (empty($result->subject) && !empty($result->ts)) {
+            $datetime = $result->ts->getDateTime();
+            $result->subject = 'No subject ' . $datetime->format('Y-m-d H:i');
         }
 
-        $from = $this->message->getHeader(HeaderConsts::FROM)->getAddresses()[0];
-        $this->from = $this->getOrCreateUser($from);
+        $from = $message->getHeader(HeaderConsts::FROM)->getAddresses()[0];
+        $result->from = $this->getOrCreateUser($from, $result);
+        return $result;
     }
 
-    private function getOrCreateUser(AddressPart $user): User
+    private function getOrCreateUser(AddressPart $user, stdClass $header): User
     {
         $result = null;
         try {
             $result = User::getOneBy(['email' => $user->getEmail()]);
         } catch (NotFoundException $e) {
             $result = User::create($user->getName(), $user->getEmail(), $this->config->domain);
-            $this->client->createUser($result, $this->ts->getDateTime());
+            $this->client->createUser($result, $header->ts->getDateTime());
         }
         return $result;
     }
 
-    private function addUser(Room $room, User $user)
+    private function addUser(Room $room, User $user, object $ts)
     {
-        $this->client->invite($room, $user, $this->ts->getDateTime());
-        $this->client->join($room, $user, $this->ts->getDateTime());
+        $this->client->invite($room, $user, $ts->getDateTime());
+        $this->client->join($room, $user, $ts->getDateTime());
         $member = new Member($room->uid, $user->uid);
         $member->save();
     }
 
-    private function getOrCreateMultiUserRoom(Account $account): Room
+    private function getOrCreateMultiUserRoom(Account $account, stdClass $header): Room
     {
         $room = null;
         try {
-            $room = Room::getOneBy(['name' => $this->subject]);
-            if (!$room->hasMember($this->from)) {
-                $this->addUser($room, $this->from);
+            $room = Room::getOneBy(['name' => $header->subject]);
+            if (!$room->hasMember($header->from)) {
+                $this->addUser($room, $header->from, $header->ts);
             }
-            foreach ($this->to->getAddresses() as $address) {
-                $member = $this->getOrCreateUser($address);
+            foreach ($header->to->getAddresses() as $address) {
+                $member = $this->getOrCreateUser($address, $header);
                 if (!$room->hasMember($member)) {
-                    $this->addUser($room, $member);
+                    $this->addUser($room, $member, $header->ts);
                 }
             }
         } catch (NotFoundException $e) {
-            $id = $this->client->createRoom($this->subject, $this->from, $this->ts->getDateTime());
-            $room = Room::create($id, $this->subject, $this->from, $account);
-            foreach ($this->to->getAddresses() as $address) {
-                $member = $this->getOrCreateUser($address);
-                $this->addUser($room, $member);
+            $id = $this->client->createRoom($header->subject, $header->from, $header->ts->getDateTime());
+            $room = Room::create($id, $header->subject, $header->from, $account);
+            foreach ($header->to->getAddresses() as $address) {
+                $member = $this->getOrCreateUser($address, $header);
+                $this->addUser($room, $member, $header->ts);
             }
         }
 
@@ -139,21 +140,21 @@ class ImportMail
         return $room;
     }
 
-    private function getOrCreateDirectUserRoom(Account $account): Room
+    private function getOrCreateDirectUserRoom(Account $account, stdClass $header): Room
     {
         $room = null;
         $name = null;
         try {
-            $name = $this->from->name;
+            $name = $header->from->name;
             if (empty($name)) {
-                $name = $this->from->email;
+                $name = $header->from->email;
             }
             $room = Room::getOneBy(['name' => $name]);
         } catch (NotFoundException $e) {
-            $id = $this->client->createRoom($name, $this->from, $this->ts->getDateTime());
-            $room = Room::create($id, $name, $this->from, $account);
+            $id = $this->client->createRoom($name, $header->from, $header->ts->getDateTime());
+            $room = Room::create($id, $name, $header->from, $account);
             $user = User::getByUid($account->user_uid);
-            $this->addUser($room, $user);
+            $this->addUser($room, $user, $header->ts);
         }
         return $room;
     }

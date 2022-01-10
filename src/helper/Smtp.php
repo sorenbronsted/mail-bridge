@@ -2,104 +2,48 @@
 
 namespace bronsted;
 
-use PHPMailer\PHPMailer\PHPMailer;
-use Exception;
-use SplFileObject;
-use stdClass;
+use Symfony\Component\Mailer\MailerInterface;
 
 class Smtp
 {
-    private PHPMailer $mailer;
-    private Http $http;
+    private ?MailerInterface $mailer;
+    private MailerFactory $factory;
 
-    public function __construct(PHPMailer $mailer, Http $http)
+    public function __construct(MailerFactory $factory)
     {
-        $this->http = $http;
-        $this->mailer = $mailer;
-        $this->mailer->isSMTP();
-        $this->mailer->SMTPAuth   = true;
-        $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $this->mailer->Port       = 465;
+        $this->factory = $factory;
     }
 
     public function open(AccountData $accountData)
     {
-        $this->mailer->Username = $accountData->user;
-        $this->mailer->Password = $accountData->password;
-        $this->mailer->Host = $accountData->smtp_host;
+        $dsn = sprintf(
+            'smtp://%s:%s@%s:%s',
+            $accountData->user,
+            $accountData->password,
+            $accountData->smtp_host,
+            $accountData->smtp_port
+        );
+        $this->mailer = $this->factory->create($dsn);
     }
 
-    public function from(User $user)
+    public function close()
     {
-        $this->mailer->setFrom($user->email, $user->name);
-    }
-
-    public function addRecipients(DbCursor $recipients)
-    {
-        foreach($recipients as $recipient) {
-            $this->mailer->addAddress($recipient->email, $recipient->name);
-        }
-    }
-
-    public function subject(string $subject)
-    {
-        $this->mailer->Subject = $subject;
-    }
-
-    public function body(string $text, string $html = '')
-    {
-        if (empty($html)) {
-            $this->mailer->Body = $text;
-            $this->mailer->isHtml(false);
-        }
-        else {
-            $this->mailer->Body = $html;
-            $this->mailer->AltBody = $text;
-            $this->mailer->isHtml(true);
-        }
-    }
-
-    public function send()
-    {
-        $this->mailer->send();
+        $this->mailer = null;
     }
 
     public function canConnect(AccountData $accountData)
     {
-        // Throws an exception if not working
+        //TODO P2 not shure if this actually verified anything
         $this->open($accountData);
-        $this->mailer->smtpConnect();
+        $this->close();
     }
 
-    public function addAttachment(string $name, string $path)
+    public function send(Mail $mail, AppServiceConfig $config, FileStore $store)
     {
-        $stream = $this->http->getStream($path);
-        //TODO P1 Use SqlTempFile
-        $file = new SplFileObject('/tmp/' . uniqid(), 'w');
-        $file->fwrite($stream);
-        $this->mailer->addAttachment($file->getPathname(), $name);
-    }
-
-    public function sendByAccount(stdClass $data)
-    {
-        $this->open($data->accountData);
-        $this->from($data->sender);
-        $this->subject($data->subject);
-
-        if ($data->event->content->msgtype == 'm.text') {
-            $this->body($data->event->content->body, $data->event->content->formatted_body);
-        }
-        else if (isset($data->event->content->url)) {
-            //TODO P2 better handling of url types https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes
-            $this->addAttachment($data->event->content->body, $data->event->content->url);
-        }
-        else {
-            throw new Exception("Can't handle message type: " . $data->event->content->msgtype);
-        }
-
-        foreach($data->recipients as $recipient) {
-            $this->mailer->addAddress($recipient->email, $recipient->name);
-        }
-        $this->send();
+        $accountData = $mail->getAccountData($config);
+        $this->open($accountData);
+        $email = $mail->getEmail($store);
+        $this->mailer->send($email);
+        $this->close();
     }
 }
