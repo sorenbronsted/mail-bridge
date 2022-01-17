@@ -7,192 +7,108 @@ use stdClass;
 
 class AppServiceCtrlTest extends TestCase
 {
+    private AppServiceConfig $config;
+    private Room $room;
+    private User $sender;
+    private Account $account;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->mock(Http::class)
             ->method('getStream')->willReturn((new StreamFactory())->createStream('test'));
+        $this->mock(MatrixClient::class);
+        $this->config = $this->container->get(AppServiceConfig::class);
+
+        $client = $this->container->get(MatrixClient::class);
+        $this->room = Fixtures::room($client, $this->config->domain);
+        $client->method('getRoomName')->willReturn($this->room->getName());
+        $client->method('getRoomAlias')->willReturn($this->room->getAlias());
+        $client->method('getRoomMembers')->willReturn($this->room->getMembers());
+
+        $this->sender = new User('@foo:bar.com', 'Foo Bar');
+        $this->account = Fixtures::account($this->sender);
+        $this->account->setAccountData($this->config, Fixtures::accountData());
+        $this->account->save();
     }
 
-    public function testInvalidCredentials()
+    public function testLoginTokenMissingCredentials()
     {
-        $user = Fixtures::user();
-        $req = $this->createRequest('GET', '/users/' . urlencode($user->id) . '?access_token=' . urlencode('not_valid'));
-        $resp = $this->app->handle($req);
-        $this->assertEquals(401, $resp->getStatusCode());
-    }
+        $params = new stdClass();
+        $params->id = Fixtures::user()->getId();
 
-    public function testMissingCredentials()
-    {
-        $user = Fixtures::user();
-        $req = $this->createRequest('GET', '/users/' . urlencode($user->id));
+        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
         $resp = $this->app->handle($req);
         $this->assertEquals(403, $resp->getStatusCode());
     }
 
-    public function testHasUserOk()
+    public function testLoginTokenMissingParameter()
     {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/users/' . urlencode($user->id) . '?access_token=' . urlencode($config->tokenGuest[0]));
+        $params = new stdClass();
+        $params->access_token = $this->config->tokenGuest[0];
+
+        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
+        $resp = $this->app->handle($req);
+        $this->assertEquals(422, $resp->getStatusCode());
+    }
+
+    public function testLogin()
+    {
+        $params = new stdClass();
+        $params->access_token = $this->config->tokenGuest[0];
+        $params->id = Fixtures::user()->getId();
+
+        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
-        $this->assertJsonData((object)[], $resp);
-    }
+        $resp->getBody()->rewind();
+        $result = json_decode($resp->getBody());
+        $this->assertNotEmpty($result->token);
 
-    public function testHasUserFail()
-    {
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/users/' . urlencode('@1') . '?access_token=' . urlencode($config->tokenGuest[0]));
+        $params = new stdClass();
+        $params->token = $result->token;
+
+        $req = $this->createRequest('GET', '/account/login?' . http_build_query($params));
         $resp = $this->app->handle($req);
-        $this->assertEquals(404, $resp->getStatusCode());
+        $this->assertEquals(302, $resp->getStatusCode());
     }
 
-    public function testHasRoomOk()
+    public function testLoginMissingParameter()
     {
-        $room = Fixtures::room();
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/rooms/' . urlencode($room->alias) . '?access_token=' . urlencode($config->tokenGuest[0]));
+        $req = $this->createRequest('GET', '/account/login');
         $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-        $this->assertJsonData((object)[], $resp);
+        $this->assertEquals(422, $resp->getStatusCode());
     }
 
-    public function testHasRoomFail()
+
+    public function testInvalidCredentials()
     {
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/rooms/' . urlencode('unknown') . '?access_token=' . urlencode($config->tokenGuest[0]));
+        $req = $this->createRequest('PUT', '/transactions/1?access_token=' . urlencode('not_valid'));
         $resp = $this->app->handle($req);
-        $this->assertEquals(404, $resp->getStatusCode());
+        $this->assertEquals(401, $resp->getStatusCode());
+        $this->assertFalse($this->logger->hasErrorRecords());
     }
 
-    public function testEventsCreateRoom()
+    public function testMissingCredentials()
     {
-        $user = new User('Kurt Humbuk', 'kurt@humbuk.dk', 'syntest.lan', 'kurt');
-        $user->save();
-
-        $data = new stdClass();
-        $data->events = [];
-
-        $event = new stdClass();
-        $event->event_id = '1';
-        $event->type = 'm.room.create';
-        $event->room_id = '1';
-        $event->user_id = $user->id;
-        $data->events[] = $event;
-
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
+        $req = $this->createRequest('PUT', '/transactions/1');
         $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-        $this->assertEquals(1, count(Room::getAll()));
+        $this->assertEquals(403, $resp->getStatusCode());
+        $this->assertFalse($this->logger->hasErrorRecords());
     }
 
-    public function testEventsSetRoomName()
+    public function testMessageTextEvent()
     {
-        $user = new User('Kurt Humbuk', 'kurt@humbuk.dk', 'syntest.lan', 'kurt');
-        $user->save();
-        $room = Fixtures::room();
-
-        $data = new stdClass();
-        $data->events = [];
-
-        $event = new stdClass();
-        $event->event_id = '1';
-        $event->type = 'm.room.name';
-        $event->room_id = $room->id;
-        $event->content = (object)['name' =>'New name'];
-        $event->user_id = $user->id;
-        $data->events[] = $event;
-
-        $this->assertNotEquals($room->name, $event->content);
-
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
-        $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-
-        $room = Room::getByUid($room->uid);
-        $this->assertEquals($room->name, $event->content->name);
-    }
-
-    public function testEventsRoomMemberWithKnownUser()
-    {
-        $user = Fixtures::user();
-        $room = Fixtures::room();
-        $creator = User::getByUid($room->creator_uid);
-
-        $data = new stdClass();
-        $data->events = [];
-
-        $event = new stdClass();
-        $event->event_id = '1';
-        $event->type = 'm.room.member';
-        $event->room_id = $room->id;
-        $event->content = (object)['membership' =>'invite', 'displayname' => $user->name];
-        $event->user_id = $creator->id;
-        $event->state_key = $user->id;
-        $data->events[] = $event;
-
-        $this->assertEquals(1, count(Member::getAll()));
-
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
-        $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-
-        $this->assertEquals(2, count(Member::getAll()));
-    }
-
-    public function testEventsRoomMemberWithUnKnownUser()
-    {
-        $room = Fixtures::room();
-        $creator = User::getByUid($room->creator_uid);
-
-        $data = new stdClass();
-        $data->events = [];
-
-        $event = new stdClass();
-        $event->event_id = '1';
-        $event->type = 'm.room.member';
-        $event->room_id = $room->id;
-        $event->content = (object)['membership' =>'invite', 'displayname' => 'Yrsa Humbuk'];
-        $event->user_id = $creator->id;
-        $event->state_key = '@mail_yrsa/humbuk.dk:syntest.lan';
-        $data->events[] = $event;
-
-        $this->assertEquals(1, count(Member::getAll()));
-
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
-        $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-
-        $this->assertEquals(2, count(Member::getAll()));
-    }
-
-    public function testEventsSendMessageText()
-    {
-        $config = $this->container->get(AppServiceConfig::class);
-
-        $user = Fixtures::user();
-        $room = Fixtures::room();
-        $room->join($user);
-        $sender = User::getByUid($room->creator_uid);
-        $account = Fixtures::account($sender);
-        $account->setAccountData($config, Fixtures::accountData());
-        $account->save();
-
         $data = new stdClass();
         $data->events = [];
 
         $event = new stdClass();
         $event->event_id = '1';
         $event->type = 'm.room.message';
-        $event->sender = $sender->id;
-        $event->room_id = $room->id;
-        $event->user_id = $sender->id;
-        $event->content = (object)['msgtype' =>'m.text', 'body' => 'hej'];
+        $event->sender = $this->sender->getId();
+        $event->room_id = $this->room->getId();
+        $event->user_id = $this->sender->getId();
+        $event->content = (object)['msgtype' => 'm.text', 'body' => 'hej'];
         $data->events[] = $event;
 
         $mock = $this->mock(FileStore::class);
@@ -202,20 +118,11 @@ class AppServiceCtrlTest extends TestCase
         $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
+        $this->assertFalse($this->logger->hasErrorRecords());
     }
 
     public function testEventsSendMessageUrl()
     {
-        $config = $this->container->get(AppServiceConfig::class);
-
-        $user = Fixtures::user();
-        $room = Fixtures::room();
-        $room->join($user);
-        $sender = User::getByUid($room->creator_uid);
-        $account = Fixtures::account($sender);
-        $account->setAccountData($config, Fixtures::accountData());
-        $account->save();
-
         $url = 'mxc://nowhere/me.jpg';
         $data = new stdClass();
         $data->events = [];
@@ -223,10 +130,10 @@ class AppServiceCtrlTest extends TestCase
         $event = new stdClass();
         $event->event_id = '1';
         $event->type = 'm.room.message';
-        $event->sender = $sender->id;
-        $event->room_id = $room->id;
-        $event->user_id = $sender->id;
-        $event->content = (object)['msgtype' =>'m.image', 'url' => $url];
+        $event->sender = $this->sender->getId();
+        $event->room_id = $this->room->getId();
+        $event->user_id = $this->sender->getId();
+        $event->content = (object)['msgtype' => 'm.image', 'url' => $url];
         $data->events[] = $event;
 
         $mock = $this->mock(FileStore::class);
@@ -236,5 +143,7 @@ class AppServiceCtrlTest extends TestCase
         $req = $this->createJsonRequest('PUT', '/transactions/1?access_token=' . urlencode($config->tokenGuest[0]), (array)$data);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
+        //var_dump( $this->logger->records);
+        $this->assertFalse($this->logger->hasErrorRecords());
     }
 }

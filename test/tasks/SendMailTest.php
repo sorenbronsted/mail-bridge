@@ -9,32 +9,25 @@ class SendMailTest extends TestCase
 {
     private AppServiceConfig $config;
     private FileStore $store;
-    private Http $http;
-    private TestLogger $logger;
 
     protected function setUp():void
     {
         parent::setUp();
-
-        $this->logger = new TestLogger();
-        Log::setInstance($this->logger);
-
         $this->config = $this->container->get(AppServiceConfig::class);
         $this->store = $this->container->get(FileStore::class);
-        $this->http = $this->container->get(Http::class);
     }
 
     public function testRunDefault()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
+        $mail = Fixtures::mail($account, $this->store, 'direct.mime');
+        $mail->action = Mail::ActionSend;
+        $mail->save();
 
-        $smtpMock = $this->mock(Smtp::class);
-        $smtpMock->expects($this->once())->method('send');
-
-        Mail::createFromEvent($this->http, $this->store, $user, User::getAll(), 'Subject', Fixtures::event());
+        $this->mock(Smtp::class)->expects($this->once())->method('send');
 
         $task = $this->container->get(SendMail::class);
         $task->run();
@@ -45,7 +38,7 @@ class SendMailTest extends TestCase
 
     public function testRunNoWork()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
@@ -59,15 +52,18 @@ class SendMailTest extends TestCase
 
     public function testFail()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
+        $mail = Fixtures::mail($account, $this->store, 'direct.mime');
+        $mail->action = Mail::ActionSend;
+        $mail->save();
 
-        $smtpMock = $this->mock(Smtp::class);
-        $smtpMock->expects($this->once())->method('send')->willThrowException(new Exception('Some error', 17));
-
-        Mail::createFromEvent($this->http, $this->store, $user, User::getAll(), 'Subject', Fixtures::event());
+        $this->mock(Smtp::class)
+            ->expects($this->once())
+            ->method('send')
+            ->willThrowException(new Exception('Some error', 17));
 
         $task = $this->container->get(SendMail::class);
         $task->run();

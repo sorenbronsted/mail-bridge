@@ -3,10 +3,8 @@
 namespace bronsted;
 
 use Exception;
-use HansOtt\PSR7Cookies\SetCookie;
 use Psr\Http\Message\MessageInterface;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use stdClass;
 
 class AccountCtrl extends ModelObjectCrudCtrl
@@ -29,33 +27,6 @@ class AccountCtrl extends ModelObjectCrudCtrl
         return $response->withHeader('Content-Type', 'text/html');
     }
 
-    public function loginToken(ServerRequestInterface $request, ResponseInterface $response): MessageInterface
-    {
-        $params = (object)$request->getQueryParams();
-        if (!isset($params->id)) {
-            return $response->withStatus(422);
-        }
-        $user = User::getOneBy(['id' => $params->id]);
-        $token = Crypto::encrypt($user->uid, $this->config->key);
-        $response->getBody()->write(json_encode(['token' => $token]));
-        return $response->withHeader('Content-Type', 'application/json');
-    }
-
-    public function login(ServerRequestInterface $request, ResponseInterface $response): MessageInterface
-    {
-        $params = (object)$request->getQueryParams();
-        if (!isset($params->token)) {
-            return $response->withStatus(422);
-        }
-
-        $uid = Crypto::decrypt($params->token, $this->config->key);
-        $user = User::getByUid($uid);
-        //TODO P2 jwt cookie
-        $cookie = new SetCookie($this->config->cookieName, $user->uid, time() + 60 * 60 * 24 * 30 * 12, '/', 'localhost', true, true, 'lax');
-        $response = $cookie->addToResponse($response);
-        return $response->withHeader('Location', '/account')->withStatus(302);
-    }
-
     public function verify(ResponseInterface $response, Imap $imap, Smtp $smtp, int $uid): MessageInterface
     {
         $account = Account::getByUid($uid);
@@ -69,7 +40,7 @@ class AccountCtrl extends ModelObjectCrudCtrl
 
     protected function getObjectsByUser(User $user): DbCursor
     {
-        return Account::getBy(['user_uid' => $user->uid]);
+        return Account::getBy(['user_id' => $user->getId()]);
     }
 
     protected function getObjectByUid(int $uid): DbObject
@@ -85,7 +56,7 @@ class AccountCtrl extends ModelObjectCrudCtrl
         }
         else {
             $account = new Account();
-            $account->user_uid = $user->uid;
+            $account->user_id = $user->getId();
         }
         $account->name = $data->name;
         $account->setAccountData($this->config, new AccountData($data));

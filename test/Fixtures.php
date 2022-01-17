@@ -3,52 +3,50 @@
 namespace bronsted;
 
 use stdClass;
+use ZBateson\MailMimeParser\Header\Part\AddressPart;
+use ZBateson\MbWrapper\MbWrapper;
 
 class Fixtures
 {
     public static function clean()
     {
         $con = Db::getConnection();
-        $tables = ['user', 'room', 'member', 'account', 'mail'];
+        $tables = ['account', 'mail'];
         foreach($tables as $table) {
             $con->execute("delete from $table");
         }
     }
 
+    public static function puppet(string $domain): User
+    {
+        $address = new AddressPart(new MbWrapper(), 'Foo Bar', 'foo@bar.com');
+        return User::fromMail($address, $domain);
+    }
+
     public static function user(): User
     {
-        $user = new User('Kurt Humbuk', 'kurt@humbuk.net', 'syn.lan');
-        $user->save();
-        return $user;
+        return User::fromId('@foo:bar.com', 'Foo Bar');
     }
 
-    public static function room(): Room
+    public static function room(MatrixClient $mock, string $domain, ?User $user = null): Room
     {
-        $creator = new User('me', 'me@somewhere.net', 'localhost', 'god');
-        $creator->save();
-        $room = new Room($creator, '1', 'Test', 'test');
-        $room->save();
-        $room->join($creator);
+        if (empty($user)) {
+            $user = self::puppet($domain);
+        }
+        $room = new Room($mock, '#1:' . $domain, 'test-alias', 'Test', [$user]);
         return $room;
-    }
-
-    public static function member(Room $room, User $user): Member
-    {
-        $member = new Member($room->uid, $user->uid);
-        $member->save();
-        return $member;
     }
 
     public static function account(User $user): Account
     {
         $account = new Account();
         $account->name = 'test';
-        $account->user_uid = $user->uid;
+        $account->user_id = $user->getId();
         $account->save();
         return $account;
     }
 
-    public static function mail(Account $account, FileStore $store, string $fixtureMail): Mail
+    public static function mail(Account $account, FileStore $store, string $fixtureMailName): Mail
     {
         $mail = new Mail();
         $mail->id = '1';
@@ -57,7 +55,7 @@ class Fixtures
         $mail->account_uid = $account->uid;
         $mail->save();
 
-        $store->write($mail->file_id, file_get_contents(__DIR__ . '/data/' . $fixtureMail));
+        $store->write($mail->file_id, file_get_contents(__DIR__ . '/data/' . $fixtureMailName));
         return $mail;
     }
 
@@ -69,11 +67,12 @@ class Fixtures
     public static function imapData(): stdClass
     {
         $fixture = new stdClass();
-        $fixture->imap_url = '1';
-        $fixture->smtp_host = '2';
-        $fixture->smtp_port = '3';
-        $fixture->user = '4';
-        $fixture->password = '5';
+        $fixture->imap_url = 'imap.nowhere';
+        $fixture->smtp_host = 'smtp.nowhere';
+        $fixture->smtp_port = '465';
+        $fixture->email = 'foo@bar.com';
+        $fixture->user_name = 'Foo Bar';
+        $fixture->password = '1234';
         return $fixture;
     }
 

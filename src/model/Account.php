@@ -13,12 +13,12 @@ class Account extends DbObject
     const StateOk   = 1;
     const StateFail = 2;
 
-    protected string $name = '';
-    protected string $data = '';
-    protected int    $state = self::StateNone;
-    protected string $state_text = 'Not verified';
+    protected string   $name = '';
+    protected string   $data = '';
+    protected int      $state = self::StateNone;
+    protected string   $state_text = 'Not verified';
     protected DateTime $updated;
-    protected int    $user_uid;
+    protected string   $user_id;
 
 
     public function save(): void
@@ -65,7 +65,9 @@ class Account extends DbObject
         $rules = new stdClass();
         $rules->imap_url = FILTER_DEFAULT;
         $rules->smtp_host = FILTER_DEFAULT;
-        $rules->user = FILTER_DEFAULT;
+        $rules->smtp_port = FILTER_VALIDATE_INT;
+        $rules->email = FILTER_VALIDATE_EMAIL;
+        $rules->user_name = FILTER_DEFAULT;
         $rules->password = FILTER_DEFAULT;
 
         $result = filter_var_array((array)$data, (array)$rules);

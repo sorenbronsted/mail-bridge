@@ -29,8 +29,8 @@ class UserAuthenticateCtrl
             return $this->responseFactory->createResponse(403);
         }
         //TODO P2 jwt cookie
-        $uid = $cookies[$this->config->cookieName];
-        $user = User::getByUid($uid);
+        $id = $cookies[$this->config->cookieName];
+        $user = User::fromId($id, 'TODO fixme');
         $this->container->set(User::class, $user);
         return $handler->handle($request);
     }

@@ -7,66 +7,19 @@ use stdClass;
 
 class AccountCtrlTest extends TestCase
 {
+    private User $user;
+    private AppServiceConfig $config;
 
-    public function testLoginTokenMissingCredentials()
+    protected function setUp(): void
     {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $params = new stdClass();
-        $params->id = $user->id;
-
-        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
-        $resp = $this->app->handle($req);
-        $this->assertEquals(403, $resp->getStatusCode());
-    }
-
-    public function testLoginTokenMissingParameter()
-    {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $params = new stdClass();
-        $params->access_token = $config->tokenGuest[0];
-
-        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
-        $resp = $this->app->handle($req);
-        $this->assertEquals(422, $resp->getStatusCode());
-    }
-
-    public function testLogin()
-    {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $params = new stdClass();
-        $params->access_token = $config->tokenGuest[0];
-        $params->id = $user->id;
-
-        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
-        $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-        $resp->getBody()->rewind();
-        $result = json_decode($resp->getBody());
-        $this->assertNotEmpty($result->token);
-
-        $params = new stdClass();
-        $params->token = $result->token;
-
-        $req = $this->createRequest('GET', '/account/login?' . http_build_query($params));
-        $resp = $this->app->handle($req);
-        $this->assertEquals(302, $resp->getStatusCode());
-    }
-
-    public function testLoginMissingParameter()
-    {
-        $req = $this->createRequest('GET', '/account/login');
-        $resp = $this->app->handle($req);
-        $this->assertEquals(422, $resp->getStatusCode());
+        parent::setUp();
+        $this->config = $this->container->get(AppServiceConfig::class);
+        $this->user = Fixtures::user();
     }
 
     public function testIndex()
     {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/account')->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('GET', '/account')->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $resp->getBody()->rewind();
@@ -75,9 +28,7 @@ class AccountCtrlTest extends TestCase
 
     public function testUser()
     {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/account/user')->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('GET', '/account/user')->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $resp->getBody()->rewind();
@@ -90,10 +41,8 @@ class AccountCtrlTest extends TestCase
 
     public function testVerifyOk()
     {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $account = Fixtures::account($user);
-        $account->setAccountData($config, Fixtures::accountData());
+        $account = Fixtures::account($this->user);
+        $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
 
         $imap = $this->mock(Imap::class);
@@ -105,7 +54,7 @@ class AccountCtrlTest extends TestCase
         $this->container->set(Smtp::class, $smtp);
 
 
-        $req = $this->createRequest('GET', '/account/' . $account->uid . '/verify')->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('GET', '/account/' . $account->uid . '/verify')->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $resp->getBody()->rewind();
@@ -117,10 +66,8 @@ class AccountCtrlTest extends TestCase
 
     public function testVerifyFail()
     {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $account = Fixtures::account($user);
-        $account->setAccountData($config, Fixtures::accountData());
+        $account = Fixtures::account($this->user);
+        $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
 
         $imap = $this->mock(Imap::class);
@@ -132,7 +79,7 @@ class AccountCtrlTest extends TestCase
         $this->container->set(Smtp::class, $smtp);
 
 
-        $req = $this->createRequest('GET', '/account/' . $account->uid . '/verify')->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('GET', '/account/' . $account->uid . '/verify')->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $resp->getBody()->rewind();
@@ -144,9 +91,7 @@ class AccountCtrlTest extends TestCase
 
     public function testCreate()
     {
-        $user = Fixtures::user();
-        $config = $this->container->get(AppServiceConfig::class);
-        $req = $this->createRequest('GET', '/account/create')->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('GET', '/account/create')->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $resp->getBody()->rewind();
@@ -159,14 +104,12 @@ class AccountCtrlTest extends TestCase
 
     public function testShow()
     {
-        $config = $this->container->get(AppServiceConfig::class);
-        $user = Fixtures::user();
         $imapData = Fixtures::accountData();
-        $account = Fixtures::account($user);
-        $account->setAccountData($config, $imapData);
+        $account = Fixtures::account($this->user);
+        $account->setAccountData($this->config, $imapData);
         $account->save();
 
-        $req = $this->createRequest('GET', '/account/' . $account->uid . '/show')->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('GET', '/account/' . $account->uid . '/show')->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $resp->getBody()->rewind();
@@ -176,20 +119,19 @@ class AccountCtrlTest extends TestCase
         $this->assertStringContainsString('form-control-plaintext', $content->html);
         $this->assertStringContainsString($imapData->imap_url, $content->html);
         $this->assertStringContainsString($imapData->smtp_host, $content->html);
-        $this->assertStringContainsString($imapData->user, $content->html);
+        $this->assertStringContainsString($imapData->email, $content->html);
+        $this->assertStringContainsString($imapData->user_name, $content->html);
         $this->assertStringContainsString($imapData->password, $content->html);
     }
 
     public function testEdit()
     {
-        $config = $this->container->get(AppServiceConfig::class);
-        $user = Fixtures::user();
         $imapData = Fixtures::accountData();
-        $account = Fixtures::account($user);
-        $account->setAccountData($config, $imapData);
+        $account = Fixtures::account($this->user);
+        $account->setAccountData($this->config, $imapData);
         $account->save();
 
-        $req = $this->createRequest('GET', '/account/' . $account->uid . '/edit')->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('GET', '/account/' . $account->uid . '/edit')->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(200, $resp->getStatusCode());
         $resp->getBody()->rewind();
@@ -199,20 +141,19 @@ class AccountCtrlTest extends TestCase
         $this->assertStringNotContainsString('form-control-plaintext', $content->html);
         $this->assertStringContainsString($imapData->imap_url, $content->html);
         $this->assertStringContainsString($imapData->smtp_host, $content->html);
-        $this->assertStringContainsString($imapData->user, $content->html);
+        $this->assertStringContainsString($imapData->email, $content->html);
+        $this->assertStringContainsString($imapData->user_name, $content->html);
         $this->assertStringContainsString($imapData->password, $content->html);
     }
 
     public function testDelete()
     {
-        $config = $this->container->get(AppServiceConfig::class);
-        $user = Fixtures::user();
         $imapData = Fixtures::accountData();
-        $account = Fixtures::account($user);
-        $account->setAccountData($config, $imapData);
+        $account = Fixtures::account($this->user);
+        $account->setAccountData($this->config, $imapData);
         $account->save();
 
-        $req = $this->createRequest('GET', '/account/' . $account->uid . '/delete')->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('GET', '/account/' . $account->uid . '/delete')->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(302, $resp->getStatusCode());
 
@@ -222,13 +163,11 @@ class AccountCtrlTest extends TestCase
 
     public function testSaveNew()
     {
-        $config = $this->container->get(AppServiceConfig::class);
-        $user = Fixtures::user();
         $imapData = Fixtures::imapData();
         $imapData->uid = 0;
         $imapData->name = 'test';
 
-        $req = $this->createRequest('POST', '/account/save')->withParsedBody($imapData)->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('POST', '/account/save')->withParsedBody($imapData)->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(302, $resp->getStatusCode());
 
@@ -236,19 +175,19 @@ class AccountCtrlTest extends TestCase
         $this->assertEquals(1, count($accounts));
         $this->assertNotEquals($imapData->uid, $accounts[0]->uid);
         $this->assertEquals($imapData->name, $accounts[0]->name);
-        $saved = $accounts[0]->getAccountData($config);
+        $saved = $accounts[0]->getAccountData($this->config);
         $this->assertEquals($imapData->imap_url, $saved->imap_url);
         $this->assertEquals($imapData->smtp_host, $saved->smtp_host);
-        $this->assertEquals($imapData->user, $saved->user);
+        $this->assertEquals($imapData->smtp_port, $saved->smtp_port);
+        $this->assertEquals($imapData->email, $saved->email);
+        $this->assertEquals($imapData->user_name, $saved->user_name);
         $this->assertEquals($imapData->password, $saved->password);
     }
 
     public function testSaveEdit()
     {
-        $config = $this->container->get(AppServiceConfig::class);
-        $user = Fixtures::user();
-        $account = Fixtures::account($user);
-        $account->setAccountData($config, Fixtures::accountData());
+        $account = Fixtures::account($this->user);
+        $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
 
         $fixture = new stdClass();
@@ -257,10 +196,11 @@ class AccountCtrlTest extends TestCase
         $fixture->imap_url = 'fixture 2';
         $fixture->smtp_host = 'fixture 3';
         $fixture->smtp_port = '17';
-        $fixture->user = 'fixture 4';
-        $fixture->password = 'fixture 5';
+        $fixture->email = 'me@nowhere.lan';
+        $fixture->user_name = 'fixture 5';
+        $fixture->password = 'fixture 6';
 
-        $req = $this->createRequest('POST', '/account/save')->withParsedBody($fixture)->withCookieParams([$config->cookieName => $user->uid]);
+        $req = $this->createRequest('POST', '/account/save')->withParsedBody($fixture)->withCookieParams([$this->config->cookieName => $this->user->getId()]);
         $resp = $this->app->handle($req);
         $this->assertEquals(302, $resp->getStatusCode());
 
@@ -268,10 +208,12 @@ class AccountCtrlTest extends TestCase
         $this->assertEquals(1, count($accounts));
         $this->assertEquals($fixture->uid, $accounts[0]->uid);
         $this->assertEquals($fixture->name, $accounts[0]->name);
-        $saved = $accounts[0]->getAccountData($config);
+        $saved = $accounts[0]->getAccountData($this->config);
         $this->assertEquals($fixture->imap_url, $saved->imap_url);
         $this->assertEquals($fixture->smtp_host, $saved->smtp_host);
-        $this->assertEquals($fixture->user, $saved->user);
+        $this->assertEquals($fixture->smtp_port, $saved->smtp_port);
+        $this->assertEquals($fixture->email, $saved->email);
+        $this->assertEquals($fixture->user_name, $saved->user_name);
         $this->assertEquals($fixture->password, $saved->password);
     }
 }

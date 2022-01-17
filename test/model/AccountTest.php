@@ -6,30 +6,37 @@ use Exception;
 
 class AccountTest extends TestCase
 {
+    private AppServiceConfig $config;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->config = $this->container->get(AppServiceConfig::class);
+    }
+
     public function testAccountDataOk()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
-        $config = $this->app->getContainer()->get(AppServiceConfig::class);
 
         $this->assertEmpty($account->data);
-        $this->assertEmpty($account->getAccountData($config));
+        $this->assertEmpty($account->getAccountData($this->config));
 
         $fixture = Fixtures::accountData();
-        $account->setAccountData($config, $fixture);
+        $account->setAccountData($this->config, $fixture);
         $account->save();
 
         $account = Account::getByUid($account->uid);
         $this->assertNotEmpty($account->data);
 
-        $data = $account->getAccountData($config);
+        $data = $account->getAccountData($this->config);
         $this->assertNotEmpty($data);
         $this->assertEquals($fixture, $data);
     }
 
     public function testAccountDataFail()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $config = $this->app->getContainer()->get(AppServiceConfig::class);
 
@@ -44,32 +51,31 @@ class AccountTest extends TestCase
 
     public function testVerifyOk()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
-        $config = $this->app->getContainer()->get(AppServiceConfig::class);
-        $account->setAccountData($config, Fixtures::accountData());
+        $account->setAccountData($this->config, Fixtures::accountData());
 
-        $imap = $this->mock(Imap::class);
-        $imap->method('canConnect')->willReturn(true);
-        $smtp = $this->mock(Smtp::class);
-        $smtp->method('canConnect')->willReturn(true);
+        $this->mock(Imap::class)->method('canConnect')->willReturn(true);
+        $this->mock(Smtp::class)->method('canConnect')->willReturn(true);
 
-        $account->verify($config, $imap, $smtp);
+        $imap = $this->container->get(Imap::class);
+        $smtp = $this->container->get(Smtp::class);
+        $account->verify($this->config, $imap, $smtp);
         $this->assertEquals(Account::StateOk, $account->state);
     }
 
     public function testVerifyFail()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $config = $this->app->getContainer()->get(AppServiceConfig::class);
         $account->setAccountData($config, Fixtures::accountData());
 
-        $imap = $this->mock(Imap::class);
-        $imap->method('canConnect')->willReturn(true);
-        $smtp = $this->mock(Smtp::class);
-        $smtp->method('canConnect')->willThrowException(new Exception());
+        $this->mock(Imap::class)->method('canConnect')->willReturn(true);
+        $this->mock(Smtp::class)->method('canConnect')->willThrowException(new Exception());
 
+        $imap = $this->container->get(Imap::class);
+        $smtp = $this->container->get(Smtp::class);
         $account->verify($config, $imap, $smtp);
         $this->assertEquals(Account::StateFail, $account->state);
     }

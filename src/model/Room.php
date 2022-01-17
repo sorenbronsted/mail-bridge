@@ -2,51 +2,108 @@
 
 namespace bronsted;
 
-class Room extends DbObject
-{
-    protected ?string $id;
-    protected ?string $name;
-    protected ?string $alias;
-    protected ?int $creator_uid;
+use Exception;
 
-    public function __construct(?User $creator = null, ?string $id = null, ?string $name = null, ?string $alias = null)
+class Room
+{
+    private MatrixClient $client;
+    private string $id;
+    private string $alias;
+    private string $name;
+    private array $members;
+
+    public function __construct(MatrixClient $client, string $id, string $alias, string $name, array $members)
     {
-        parent::__construct();
-        $this->creator_uid = $creator->uid ?? null;
+        $this->client = $client;
         $this->id = $id;
-        $this->name = $name;
         $this->alias = $alias;
+        $this->name = $name;
+        $this->members = $members;
+        $this->validate();
     }
 
-    public static function create(string $id, string $name, User $creator): Room
+    public function getId(): string
     {
-        $room = new Room($creator, $id, $name);
-        $room->save();
-        Member::add($room, $creator);
+        return $this->id;
+    }
+
+    public function getAlias(): string
+    {
+        return $this->alias;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getMembers(): array
+    {
+        return $this->members;
+    }
+
+    public static function create(MatrixClient $client, string $alias, string $name, User $creator, bool $direct): Room
+    {
+        $id = $client->createRoom($name, $alias, $creator, $direct);
+        $room = new Room($client, $id, $alias, $name, [$creator]);
         return $room;
     }
 
     public function hasMember(User $user): bool
     {
-        try {
-            Member::getOneBy(['room_uid' => $this->uid, 'user_uid' => $user->uid]);
-        } catch (NotFoundException $e) {
-            return false;
+        foreach ($this->members as $member) {
+            if ($member->getId() == $user->getId()) {
+                return true;
+            }
         }
-        return true;
+        return false;
     }
 
-    public function join(User $user)
+    public static function getByAlias(MatrixClient $client, string $alias): Room
     {
-        Member::add($this, $user);
+        try {
+            $id = $client->getRoomIdByAlias($alias);
+            $name = $client->getRoomName($id);
+            $members = $client->getRoomMembers($id);
+            return new Room($client, $id, $alias, $name, $members);
+        } catch (Exception $e) {
+            if ($e->getCode() == 404) {
+                throw new NotFoundException(__CLASS__);
+            }
+            throw $e;
+        }
     }
 
-    public function getMailRecipients(User $sender): DbCursor
+    public static function getById(MatrixClient $client, string $id)
     {
-        // Get members for this room which has valid email and id starts with '@mail_' and it not the sender
-        $sql = "select u.* from user u join member m on u.uid = m.user_uid ".
-            "where m.room_uid = :room_uid and u.email is not null and length(u.email) > 0 ".
-            "and u.uid != :sender_uid and substr(u.id,1,6) = '@mail_'";
-        return User::getObjects($sql, ['room_uid' => $this->uid, 'sender_uid' => $sender->uid]);
+        try {
+            $name = $client->getRoomName($id);
+            $alias = $client->getRoomAlias($id);
+            $members = $client->getRoomMembers($id);
+            return new Room($client, $id, $alias, $name, $members);
+        } catch (Exception $e) {
+            if ($e->getCode() == 404) {
+                throw new NotFoundException(__CLASS__);
+            }
+        }
+    }
+
+    public function addUser(User $user, Account $account): void
+    {
+        if (!$this->hasMember($user)) {
+            $this->client->createUser($user);
+            $this->client->invite($this, $user, $account);
+            $this->client->join($this, $user);
+            $this->members[] = $user;
+        }
+    }
+
+    private function validate()
+    {
+        foreach (['id', 'alias', 'name', 'members'] as $name) {
+            if (empty($this->$name)) {
+                throw new Exception("$name can not be empty");
+            }
+        }
     }
 }

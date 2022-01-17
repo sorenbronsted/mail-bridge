@@ -42,45 +42,18 @@ class Mail extends DbObject
         parent::delete();
     }
 
-    public static function createFromEvent(Http $http, Filestore $store, User $sender, DbCursor $recipients, string $subject, stdClass $event)
+    public static function createFromEvent(MatrixClient $client, AppServiceConfig $config, Http $http, Filestore $store, stdClass $event)
     {
-        $email = new Email();
-        $email->from(new Address($sender->email, $sender->name))->subject($subject);
+        $account = Account::getOneBy(['user_id' => $event->sender]);
+        $message = self::createMailFromEvent($client, $account->getAccountData($config), $http, $event);
 
-        $to = [];
-        foreach($recipients as $recipient) {
-            $to[] = new Address($recipient->email, $recipient->name);
-        }
-        $email->to(...$to);
-
-        $attachment = null;
-        //TODO P2 better handling of url types https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes
-        if ($event->content->msgtype == 'm.text') {
-            $email->text($event->content->body ?? '');
-            $email->html($event->content->formatted_body ?? '');
-        }
-        else if (isset($event->content->url)) {
-            $attachment = sys_get_temp_dir() . '/' . uniqid();
-            file_put_contents($attachment, $http->getStream($event->content->url));
-            $email->attachFromPath($attachment);
-        }
-        else {
-            throw new Exception("Can't handle message type: " . $event->content->msgtype);
-        }
-
-        $account = Account::getOneBy(['user_uid' => $sender->uid]);
         $mail = new Mail();
         $mail->id = $event->event_id;
         $mail->file_id = uniqid() . '.mime';
         $mail->account_uid = $account->uid;
         $mail->action = self::ActionSend;
-        $store->write($mail->file_id, serialize($email));
+        $store->write($mail->file_id, $message);
         $mail->save();
-
-        // Attachment if any can only be removed after the email is serialized
-        if ($attachment) {
-            @unlink($attachment);
-        }
 
         return $mail;
     }
@@ -94,11 +67,50 @@ class Mail extends DbObject
     public function getEmail(FileStore $store): RawMessage
     {
         $info = $this->getFileInfo($store);
+        //TODO unserialiase ?
         return new RawMessage($info->openFile('r')->fread($info->getSize()));
     }
 
     public function parse(FileStore $store): Message
     {
         return Message::from($this->getFileInfo($store)->openFile(), true);
+    }
+
+    private static function createMailFromEvent(MatrixClient $client, AccountData $accountData, Http $http, stdClass $event): string
+    {
+        $room = Room::getById($client, $event->room_id);
+
+        $mail = new Email();
+        $mail->from(new Address($accountData->email, $accountData->user_name))->subject($room->getName());
+
+        $to = [];
+        foreach($room->getMembers() as $recipient) {
+            $to[] = new Address($recipient->getEmail(), $recipient->getName());
+        }
+        $mail->to(...$to);
+
+        $attachment = null;
+        //TODO P2 better handling of url types https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes
+        if ($event->content->msgtype == 'm.text') {
+            $mail->text($event->content->body ?? '');
+            $mail->html($event->content->formatted_body ?? '');
+        }
+        else if (isset($event->content->url)) {
+            $attachment = sys_get_temp_dir() . '/' . uniqid();
+            file_put_contents($attachment, $http->getStream($event->content->url));
+            $mail->attachFromPath($attachment);
+        }
+        else {
+            throw new Exception("Can't handle message type: " . $event->content->msgtype);
+        }
+
+        $result = serialize($mail);
+
+        // Attachment if any can only be removed after the email is serialized
+        if ($attachment) {
+            @unlink($attachment);
+        }
+
+        return $result;
     }
 }

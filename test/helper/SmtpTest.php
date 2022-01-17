@@ -32,7 +32,7 @@ class SmtpTest extends TestCase
 
     public function testSendSimple()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();

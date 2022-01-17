@@ -18,7 +18,7 @@ class Smtp
     {
         $dsn = sprintf(
             'smtp://%s:%s@%s:%s',
-            $accountData->user,
+            $accountData->email,
             $accountData->password,
             $accountData->smtp_host,
             $accountData->smtp_port

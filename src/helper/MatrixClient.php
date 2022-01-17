@@ -3,6 +3,7 @@
 namespace bronsted;
 
 use DateTime;
+use Exception;
 use HTMLPurifier;
 use HTMLPurifier_Config;
 use stdClass;
@@ -17,7 +18,7 @@ use ZBateson\MailMimeParser\Message;
 class MatrixClient
 {
     private Http $http;
-    private AppServiceConfig $config;
+    private string $base = '/_matrix/client/v3';
 
     public function __construct(Http $http, AppServiceConfig $config)
     {
@@ -25,43 +26,78 @@ class MatrixClient
         $this->config = $config;
     }
 
-    public function createUser(User $user, DateTime $ts)
+    public function createUser(User $user)
     {
-        $url = '/_matrix/client/r0/register?ts=' . ($ts->format('U') * 1000);
+        $url = $this->base . '/register';
         $data = new stdClass();
         $data->type = "m.login.application_service";
         $data->username = $user->localId();
         $this->http->post($url, $data);
 
-        $url = '/_matrix/client/r0/profile/' . urlencode($user->id) . '/displayname?user_id=' . urlencode($user->id) . '&ts=' . ($ts->format('U') * 1000);
+        $url = $this->base . '/profile/' . urlencode($user->getId()) . '/displayname?user_id=' . urlencode($user->getId());
         $data = new stdClass();
-        $data->displayname = $user->name;
+        $data->displayname = $user->getName();
         $this->http->put($url, $data);
     }
 
-    public function createRoom(string $name, User $creator, DateTime $ts): string
+    public function createRoom(string $name, string $alias, User $creator, bool $direct = false): string
     {
-        $url = '/_matrix/client/r0/createRoom?user_id=' . urlencode($creator->id) . '&ts=' . ($ts->format('U') * 1000);
+        $url = $this->base . '/createRoom?user_id=' . urlencode($creator->getId());
         $data = new stdClass();
         $data->visibility = 'private';
         $data->preset = 'trusted_private_chat'; // This does work as expected se join()
         $data->name = $name;
+        $data->room_alias_name = $alias;
+        $data->is_direct = $direct;
         $result = $this->http->post($url, $data);
         return $result->room_id;
     }
 
-    public function invite(Room $room, User $user, DateTime $ts)
+    public function getRoomIdByAlias(string $alias): string
     {
-        $creator = User::getByUid($room->creator_uid);
-        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/invite?user_id=' . $creator->id . '&ts=' . ($ts->format('U') * 1000);
+        $url = $this->base . '/directory/room/' . urldecode($alias);
+        $result = $this->http->get($url);
+        return $result->room_id;
+    }
+
+    public function getRoomName(string $id): string
+    {
+        $event = 'm.room.name';
+        $url = $this->base . '/rooms/' . urldecode($id) . '/state/ ' . urlencode($event);
+        $result = $this->http->get($url);
+        return $result->content->display_name; //TODO P1 find den korrekt opbygning fra eksempel
+    }
+
+    public function getRoomAlias(string $id): string
+    {
+        $event = 'm.room.alias';
+        $url = $this->base . '/rooms/' . urldecode($id) . '/state/ ' . urlencode($event);
+        $result = $this->http->get($url);
+        return $result->content->display_name; //TODO P1 find den korrekt opbygning fra eksempel
+    }
+
+    public function getRoomMembers(string $id): array
+    {
+        $url = $this->base . '/room/' . urldecode($id) . 'joined_members';
+        $result = $this->http->get($url);
+        $members = [];
+        foreach($result->joined as $id => $body){
+            $members[] = User::fromId($id, $body->display_name);
+        }
+        return $members;
+    }
+
+    public function invite(Room $room, User $user, Account $account): void
+    {
+        $url = $this->base . '/rooms/' . urlencode($room->getId()) . '/invite?user_id=' . urlencode($account->user_id);
         $data = new stdClass();
-        $data->user_id = $user->id;
+        $data->user_id = $user->getId();
         $this->http->post($url, $data);
     }
 
-    public function join(Room $room, User $user, DateTime $ts)
+    public function join(Room $room, User $user)
     {
-        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/join?user_id=' . urlencode($user->id) . '&ts=' . ($ts->format('U') * 1000);
+        $url = $this->base . '/rooms/' . urlencode($room->getId()) . '/join?user_id=' . urlencode($user->getId());
         $data  = new stdClass();
         $this->http->post($url, $data);
 
@@ -89,14 +125,14 @@ class MatrixClient
     public function send(Room $room, User $from, Message $message, DateTime $ts)
     {
         $uid = md5($message->getHeaderValue(HeaderConsts::MESSAGE_ID));
-        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->id) . '&ts=' . ($ts->format('U') * 1000);
+        $url = $this->base . '/rooms/' . urlencode($room->getId()) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->getId()) . '&ts=' . ($ts->format('U') * 1000);
 
         $data = new stdClass();
         $data->msgtype = 'm.text';
         $data->body = $message->getTextContent() ?? strip_tags($message->getHtmlContent());
         $data->format = 'org.matrix.custom.html';
         $data->formatted_body = $this->sanitize($message->getHtmlContent()) ?? '';
-        $data->sender = $from->id;
+        $data->sender = $from->getId();
         $this->http->put($url, $data);
 
         for ($i = 0; $i < $message->getAttachmentCount(); $i++) {
@@ -104,16 +140,16 @@ class MatrixClient
             $type = $attachment->getHeaderValue(HeaderConsts::CONTENT_TYPE);
             $name = $attachment->getHeaderParameter(HeaderConsts::CONTENT_TYPE, 'name') ?? uniqid();
 
-            $this->upload($room, $from, $uid."+$i", $attachment->getContentStream(), $name, $type, $ts);
+            $this->upload($room, $from, $uid . "+$i", $attachment->getContentStream(), $name, $type, $ts);
         }
     }
 
     public function upload(Room $room, User $from, string $uid, $stream, string $name, string $type, DateTime $ts)
     {
-        $url = '/_matrix/media/r0/upload?filename=' . urlencode($name);
+        $url = $this->base . '/upload?filename=' . urlencode($name);
         $result = $this->http->postStream($url, $type, $stream);
 
-        $url = '/_matrix/client/r0/rooms/' . urlencode($room->id) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->id) . '&ts=' . ($ts->format('U') * 1000);
+        $url = '/_matrix/client/v3/rooms/' . urlencode($room->getId()) . '/send/m.room.message/' . urlencode($uid) . '?user_id=' . urlencode($from->getId()) . '&ts=' . ($ts->format('U') * 1000);
         $data = new stdClass();
         $data->msgtype = 'm.file';
         $data->body = $name;
@@ -127,8 +163,8 @@ class MatrixClient
             return '';
         }
         // taken from https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes
-        $allowedTags = "font,del,h1,h2,h3,h4,h5,h6,blockquote,p,".
-            "a[name|target|href],ul,ol[start],sup,sub,li,b,i,u,strong,em,strike,".
+        $allowedTags = "font,del,h1,h2,h3,h4,h5,h6,blockquote,p," .
+            "a[name|target|href],ul,ol[start],sup,sub,li,b,i,u,strong,em,strike," .
             "code[class],hr,br,div,table,thead,tbody,tr,th,td,caption,pre,span,img[width|height|alt|title|src]";
 
         //TODO P2 ensure that javascript on events is stripped off

@@ -2,6 +2,7 @@
 
 namespace bronsted;
 
+use HansOtt\PSR7Cookies\SetCookie;
 use Psr\Http\Message\MessageInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -10,14 +11,44 @@ use Throwable;
 
 class AppServiceCtrl
 {
+    private MatrixClient $client;
+    private AppServiceConfig $config;
     private Http $http;
     private FileStore $store;
 
-    public function __construct(Http $http, FileStore $store)
+    public function __construct(MatrixClient $client, AppServiceConfig $config, Http $http, FileStore $store)
     {
+        $this->client = $client;
+        $this->config = $config;
         $this->http = $http;
         $this->store = $store;
     }
+
+    public function loginToken(ServerRequestInterface $request, ResponseInterface $response): MessageInterface
+    {
+        $params = (object)$request->getQueryParams();
+        if (!isset($params->id)) {
+            return $response->withStatus(422);
+        }
+        $token = Crypto::encrypt($params->id, $this->config->key);
+        $response->getBody()->write(json_encode(['token' => $token]));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function login(ServerRequestInterface $request, ResponseInterface $response): MessageInterface
+    {
+        $params = (object)$request->getQueryParams();
+        if (!isset($params->token)) {
+            return $response->withStatus(422);
+        }
+
+        $id = Crypto::decrypt($params->token, $this->config->key);
+        //TODO P2 jwt cookie
+        $cookie = new SetCookie($this->config->cookieName, $id, time() + 60 * 60 * 24 * 30 * 12, '/', 'localhost', true, true, 'lax');
+        $response = $cookie->addToResponse($response);
+        return $response->withHeader('Location', '/account')->withStatus(302);
+    }
+
 
     public function events(ServerRequestInterface $request, ResponseInterface $response, string $txnId): MessageInterface
     {
@@ -30,28 +61,6 @@ class AppServiceCtrl
 
         $response->getBody()->write(json_encode(new stdClass()));
         return $response->withHeader('Content-Type', 'application/json');
-    }
-
-    public function hasUser(ResponseInterface $response, string $userId): MessageInterface
-    {
-        try {
-            User::getOneBy(['id' => $userId]);
-            $response->getBody()->write('{}');
-            return $response->withHeader('Content-Type', 'application/json');
-        } catch (NotFoundException $e) {
-            return $response->withStatus(404);
-        }
-    }
-
-    public function hasRoom(ResponseInterface $response, string $roomAlias): MessageInterface
-    {
-        try {
-            Room::getOneBy(['alias' => $roomAlias]);
-            $response->getBody()->write('{}');
-            return $response->withHeader('Content-Type', 'application/json');
-        } catch (NotFoundException $e) {
-            return $response->withStatus(404);
-        }
     }
 
     private function consumeEvents(string $txnId, ?stdClass $events = null)
@@ -74,72 +83,9 @@ class AppServiceCtrl
                 continue;
             }
 
-            switch ($event->type) {
-                case 'm.room.create':
-                    $this->createRoom($event);
-                    break;
-                case 'm.room.name':
-                    $this->setRoomName($event);
-                    break;
-                case 'm.room.member':
-                    $this->roomMember($event);
-                    break;
-                case 'm.room.message':
-                    $this->message($event);
-                    break;
+            if ($event->type == 'm.room.message') {
+                Mail::createFromEvent($this->client, $this->config, $this->http, $this->store, $event);
             }
         }
-    }
-
-    private function createRoom(stdClass $event)
-    {
-        try {
-            Room::getOneBy(['id' => $event->room_id]);
-        } catch (NotFoundException $e) {
-            $creator = User::getOrCreate($event->user_id);
-            Room::create($event->room_id, '', $creator);
-        }
-    }
-
-    private function setRoomName(stdClass $event)
-    {
-        if (empty($event->content->name)) {
-            return;
-        }
-        $room = Room::getOneBy(['id' => $event->room_id]);
-        $room->name = $event->content->name;
-        $room->save();
-    }
-
-    private function roomMember(stdClass $event)
-    {
-        if ($event->content->membership == 'invite' && User::isPuppet($event->state_key)) {
-            $user = null;
-            $room = Room::getOneBy(['id' => $event->room_id]);
-            try {
-                $user = User::getOneBy(['id' => $event->state_key]);
-                if (!$room->hasMember($user)) {
-                    $room->join($user);
-                }
-            } catch (NotFoundException $e) {
-                $user = new User($event->content->displayname);
-                $user->setEmailById($event->state_key);
-                $user->save();
-                $room->join($user);
-            }
-        }
-    }
-
-    private function message(stdClass $event)
-    {
-        $sender = User::getOneBy(['id' => $event->sender]);
-        if (!$sender->email) {
-            Log::warning('Sender has no email, so no delivery');
-            return;
-        }
-
-        $room = Room::getOneBy(['id' => $event->room_id]);
-        $recipients = $room->getMailRecipients($sender);
-        Mail::createFromEvent($this->http, $this->store, $sender, $recipients, $room->name, $event);
     }
 }

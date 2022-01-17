@@ -22,7 +22,7 @@ use bronsted\Account;
                 <h5 class="card-title">Mail Bridge</h5>
 
                 <div class="mb-2 row">
-                    <label class="col-md-2 col-form-label">Name</label>
+                    <label class="col-md-2 col-form-label">Account name</label>
                     <div class="col-md-10">
                         <input class="<?= $this->data->uiState == 'show' ? 'form-control-plaintext' : 'form-control' ?>" required name="name" <?= $this->data->uiState == 'show' ? 'disabled' : '' ?> value="<?= $this->data->selected->name ?? '' ?>" />
                     </div>
@@ -43,9 +43,23 @@ use bronsted\Account;
                 </div>
 
                 <div class="mb-2 row">
-                    <label class="col-md-2 col-form-label">User</label>
+                    <label class="col-md-2 col-form-label">Smtp port</label>
                     <div class="col-md-10">
-                        <input class="<?= $this->data->uiState == 'show' ? 'form-control-plaintext' : 'form-control' ?>" required name="user" <?= $this->data->uiState == 'show' ? 'disabled' : '' ?> value="<?= $this->data->selected->user ?? '' ?>" />
+                        <input class="<?= $this->data->uiState == 'show' ? 'form-control-plaintext' : 'form-control' ?>" required name="smtp_port" <?= $this->data->uiState == 'show' ? 'disabled' : '' ?> value="<?= $this->data->selected->smtp_host ?? '' ?>" />
+                    </div>
+                </div>
+
+                <div class="mb-2 row">
+                    <label class="col-md-2 col-form-label">Email</label>
+                    <div class="col-md-10">
+                        <input class="<?= $this->data->uiState == 'show' ? 'form-control-plaintext' : 'form-control' ?>" required name="email" <?= $this->data->uiState == 'show' ? 'disabled' : '' ?> value="<?= $this->data->selected->email ?? '' ?>" />
+                    </div>
+                </div>
+
+                <div class="mb-2 row">
+                    <label class="col-md-2 col-form-label">Name</label>
+                    <div class="col-md-10">
+                        <input class="<?= $this->data->uiState == 'show' ? 'form-control-plaintext' : 'form-control' ?>" required name="user_name" <?= $this->data->uiState == 'show' ? 'disabled' : '' ?> value="<?= $this->data->selected->user_name ?? '' ?>" />
                     </div>
                 </div>
 

@@ -10,14 +10,10 @@ class FetchMailTest extends TestCase
 {
     private AppServiceConfig $config;
     private FileStore $store;
-    private TestLogger $logger;
 
     protected function setUp():void
     {
         parent::setUp();
-
-        $this->logger = new TestLogger();
-        Log::setInstance($this->logger);
 
         $this->config = $this->container->get(AppServiceConfig::class);
         $this->store = $this->container->get(FileStore::class);
@@ -25,7 +21,7 @@ class FetchMailTest extends TestCase
 
     public function testRunDefault()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->updated = new DateTime('-10 min');
@@ -47,7 +43,7 @@ class FetchMailTest extends TestCase
 
     public function testRunNoWork()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
@@ -61,7 +57,7 @@ class FetchMailTest extends TestCase
 
     public function testFail()
     {
-        $user = Fixtures::user();
+        $user = Fixtures::puppet($this->config->domain);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->updated = new DateTime('-10 min');

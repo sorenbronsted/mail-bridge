@@ -10,6 +10,10 @@ use ZBateson\MailMimeParser\Header\HeaderConsts;
 use ZBateson\MailMimeParser\Header\Part\AddressPart;
 use ZBateson\MailMimeParser\Message;
 
+/* Less secure apps needs be enabled to be able to login into gmail.com
+   https://support.google.com/accounts/answer/6010255?hl=en
+ */
+
 class ImportMail
 {
     private AppServiceConfig $config;
@@ -62,8 +66,6 @@ class ImportMail
     private function parse(Message $message): stdClass
     {
         $result = new stdClass();
-
-        //TODO parse to stdclass
         $result->to = $message->getHeader(HeaderConsts::TO);
         $result->ts = $message->getHeader(HeaderConsts::DATE);
         if (empty($result->to) || empty($result->ts) || empty($message->getHeader(HeaderConsts::FROM))) {
@@ -72,70 +74,39 @@ class ImportMail
 
         $result->subject = $message->getHeader(HeaderConsts::SUBJECT);
         if (is_object($result->subject)) {
-            $result->subject = $result->subject->getValue();
+            $result->subject = trim($result->subject->getValue());
         }
 
         $idx = strrpos($result->subject, ':');
         if ($idx !== false) {
             $result->subject = trim(substr($result->subject, $idx + 1));
         }
+
         if (empty($result->subject) && !empty($result->ts)) {
             $datetime = $result->ts->getDateTime();
             $result->subject = 'No subject ' . $datetime->format('Y-m-d H:i');
         }
 
+        $result->alias = strtolower(str_replace(' ', '-', $result->subject));
+
         $from = $message->getHeader(HeaderConsts::FROM)->getAddresses()[0];
-        $result->from = $this->getOrCreateUser($from, $result);
+        $result->from = User::fromMail($from, $this->config->domain);
         return $result;
-    }
-
-    private function getOrCreateUser(AddressPart $user, stdClass $header): User
-    {
-        $result = null;
-        try {
-            $result = User::getOneBy(['email' => $user->getEmail()]);
-        } catch (NotFoundException $e) {
-            $result = User::create($user->getName(), $user->getEmail(), $this->config->domain);
-            $this->client->createUser($result, $header->ts->getDateTime());
-        }
-        return $result;
-    }
-
-    private function addUser(Room $room, User $user, object $ts)
-    {
-        $this->client->invite($room, $user, $ts->getDateTime());
-        $this->client->join($room, $user, $ts->getDateTime());
-        $member = new Member($room->uid, $user->uid);
-        $member->save();
     }
 
     private function getOrCreateMultiUserRoom(Account $account, stdClass $header): Room
     {
         $room = null;
         try {
-            $room = Room::getOneBy(['name' => $header->subject]);
-            if (!$room->hasMember($header->from)) {
-                $this->addUser($room, $header->from, $header->ts);
-            }
-            foreach ($header->to->getAddresses() as $address) {
-                $member = $this->getOrCreateUser($address, $header);
-                if (!$room->hasMember($member)) {
-                    $this->addUser($room, $member, $header->ts);
-                }
-            }
+            $room = Room::getByAlias($this->client, $header->alias);
         } catch (NotFoundException $e) {
-            $id = $this->client->createRoom($header->subject, $header->from, $header->ts->getDateTime());
-            $room = Room::create($id, $header->subject, $header->from, $account);
-            foreach ($header->to->getAddresses() as $address) {
-                $member = $this->getOrCreateUser($address, $header);
-                $this->addUser($room, $member, $header->ts);
-            }
+            $room = Room::create($this->client, $header->alias, $header->subject, $header->from, false);
         }
 
-        // Ensure that current account is allways a member
-        $user = User::getByUid($account->user_uid);
-        if (!$room->hasMember($user)) {
-            $room->join($user);
+        $room->addUser($header->from, $account);
+        foreach ($header->to->getAddresses() as $address) {
+            $user = User::fromMail($address, $this->config->domain);
+            $room->addUser($user, $account);
         }
         return $room;
     }
@@ -143,18 +114,10 @@ class ImportMail
     private function getOrCreateDirectUserRoom(Account $account, stdClass $header): Room
     {
         $room = null;
-        $name = null;
         try {
-            $name = $header->from->name;
-            if (empty($name)) {
-                $name = $header->from->email;
-            }
-            $room = Room::getOneBy(['name' => $name]);
+            $room = Room::getByAlias($this->client, $header->from->getId());
         } catch (NotFoundException $e) {
-            $id = $this->client->createRoom($name, $header->from, $header->ts->getDateTime());
-            $room = Room::create($id, $name, $header->from, $account);
-            $user = User::getByUid($account->user_uid);
-            $this->addUser($room, $user, $header->ts);
+            $room = Room::create($this->client, $header->from->getId(), $header->from->getName(), $header->from, true);
         }
         return $room;
     }

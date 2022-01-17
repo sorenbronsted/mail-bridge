@@ -3,47 +3,72 @@
 namespace bronsted;
 
 use Exception;
+use ZBateson\MailMimeParser\Header\Part\AddressPart;
 
-class User extends DbObject
+class User
 {
     const PUPPET_PREFIX = '@mail_';
-    protected ?string $id;
-    protected ?string $name;
-    protected ?string $email;
+    private string $id;
+    private string $name;
+    private string $email;
 
-    public function __construct(?string $name = null, ?string $email = null, ?string $domain = null, ?string $local_id = null)
+    public function __construct(string $id, string $name, string $domain = '')
     {
-        parent::__construct();
-        $this->name = trim($name);
-        $this->email = strtolower($email);
-
-        if (empty($this->name)) {
-            $this->name = $this->email;
+        if (empty($id)) {
+            throw new Exception("id must not be empty");
         }
-
-        if ($local_id) {
-            $this->id = '@' . $local_id . ':' . $domain;
+        if (empty($name)) {
+            throw new Exception("name must not be empty");
+        }
+        $this->name = $name;
+        if (self::isPuppet($id)) {
+            $this->id = $id;
+            $this->calcEmail();
+        }
+        else if ($id[0] == '@') {
+            $this->id = $id;
+            $this->email = '';
         }
         else {
+            if (empty($domain)) {
+                throw new Exception('domain must not be empty');
+            }
+            self::validateEmail($id);
+            $this->email = $id;
             $this->calcId($domain);
         }
     }
 
-    public function save(): void
+    public static function fromMail(AddressPart $address, $domain)
     {
-        if (empty($this->name)) {
-            throw new Exception('Name can not be empty');
-        }
-        parent::save();
+        return new self(
+            strtolower($address->getEmail()),
+            trim($address->getName()) ?? '',
+            $domain
+        );
     }
 
-    public function setEmailById(string $id)
+    public static function fromId(string $id, string $name)
     {
-        if (!self::isPuppet($id)) {
-            throw new Exception('Not a valid puppet id');
-        }
-        $this->id = $id;
-        $this->calcEmail();
+        return new self(
+            $id,
+            trim($name) ?? ''
+        );
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getEmail(): string
+    {
+        return $this->email;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
     }
 
     public function localId(): string
@@ -56,39 +81,15 @@ class User extends DbObject
         return substr($id, 0, strlen(self::PUPPET_PREFIX)) == self::PUPPET_PREFIX;
     }
 
-    public static function getNonePuppets(): DbCursor
+    public static function validateEmail(string $email)
     {
-        $sql = "select u.* from user u where substr(id,0,6) != '" . self::PUPPET_PREFIX ."'";
-        return self::getObjects($sql, []);
-    }
-
-    public static function getOrCreate(string $id): User
-    {
-        $user = null;
-        try {
-            $user = self::getOneBy(['id' => $id]);
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new Exception('email is not valid');
         }
-        catch(NotFoundException $e) {
-            $user = new User();
-            $user->id = $id;
-            $user->name = $id;
-            $user->save();
-        }
-        return $user;
-    }
-
-    public static function create(string $name, string $email, string $domain): User
-    {
-        $user = new User($name, $email, $domain);
-        $user->save();
-        return $user;
     }
 
     private function calcId($domain)
     {
-        if ($this->email == null) {
-            return;
-        }
         $email = $this->email;
         $idx = strpos($email, '@');
         $email[$idx] = '/';
@@ -101,6 +102,7 @@ class User extends DbObject
         $email = substr($this->localId(), strlen(self::PUPPET_PREFIX) - 1);
         $idx = strpos($email, '/');
         $email[$idx] = '@';
+        self::validateEmail($email);
         $this->email = $email;
     }
 }

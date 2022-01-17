@@ -1,7 +1,6 @@
 Alle P1 skal laves inden egen drift:
 
 P1:
- - Erstat zbateson og phpmailer med symfony mailer og mime
  - I stedet for selv at holde styr med rum og brugere, så kan disse hentes from matrix istedet
    med rum alias og rum members
  - brug reactphp og tasks, som henter, importer og sender mails
