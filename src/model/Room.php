@@ -78,13 +78,27 @@ class Room
     {
         try {
             $name = $client->getRoomName($id);
-            $alias = $client->getRoomAlias($id);
             $members = $client->getRoomMembers($id);
+
+            try {
+                // A matrix room create user by, does nessecary have and alias
+                // This need because the service depsends on aliases for rooms
+                $alias = $client->getRoomAlias($id);
+            } catch (Exception $e) {
+                if ($e->getCode() == 404) {
+                    $alias = self::toAlias($name);
+                    $client->setRoomAlias($id, $alias);
+                }
+                else {
+                    throw $e;
+                }
+            }
             return new Room($client, $id, $alias, $name, $members);
         } catch (Exception $e) {
             if ($e->getCode() == 404) {
                 throw new NotFoundException(__CLASS__);
             }
+            throw $e;
         }
     }
 
@@ -98,11 +112,16 @@ class Room
         }
     }
 
+    public static function toAlias(string $name)
+    {
+        return strtolower(str_replace(' ', '-', trim($name)));
+    }
+
     private function validate()
     {
         foreach (['id', 'alias', 'name', 'members'] as $name) {
             if (empty($this->$name)) {
-                throw new Exception("$name can not be empty");
+                throw new Exception("$name must not be empty");
             }
         }
     }

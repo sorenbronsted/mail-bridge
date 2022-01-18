@@ -99,17 +99,13 @@ class AppServiceCtrlTest extends TestCase
 
     public function testMessageTextEvent()
     {
-        $data = new stdClass();
-        $data->events = [];
+        $event = Fixtures::event('event_text.json');
+        $account = Fixtures::account(User::fromId($event->sender, 'TODO name can be empty'));
+        $account->setAccountData($this->config, Fixtures::accountData());
+        $account->save();
 
-        $event = new stdClass();
-        $event->event_id = '1';
-        $event->type = 'm.room.message';
-        $event->sender = $this->sender->getId();
-        $event->room_id = $this->room->getId();
-        $event->user_id = $this->sender->getId();
-        $event->content = (object)['msgtype' => 'm.text', 'body' => 'hej'];
-        $data->events[] = $event;
+        $data = new stdClass();
+        $data->events = [$event];
 
         $mock = $this->mock(FileStore::class);
         $mock->expects($this->once())->method('write');
@@ -123,18 +119,13 @@ class AppServiceCtrlTest extends TestCase
 
     public function testEventsSendMessageUrl()
     {
-        $url = 'mxc://nowhere/me.jpg';
-        $data = new stdClass();
-        $data->events = [];
+        $event = Fixtures::event('event_url.json');
+        $account = Fixtures::account(User::fromId($event->sender, 'TODO name can be empty'));
+        $account->setAccountData($this->config, Fixtures::accountData());
+        $account->save();
 
-        $event = new stdClass();
-        $event->event_id = '1';
-        $event->type = 'm.room.message';
-        $event->sender = $this->sender->getId();
-        $event->room_id = $this->room->getId();
-        $event->user_id = $this->sender->getId();
-        $event->content = (object)['msgtype' => 'm.image', 'url' => $url];
-        $data->events[] = $event;
+        $data = new stdClass();
+        $data->events = [$event];
 
         $mock = $this->mock(FileStore::class);
         $mock->expects($this->once())->method('write');

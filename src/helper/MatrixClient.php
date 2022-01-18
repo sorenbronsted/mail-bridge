@@ -63,7 +63,7 @@ class MatrixClient
     public function getRoomName(string $id): string
     {
         $event = 'm.room.name';
-        $url = $this->base . '/rooms/' . urldecode($id) . '/state/ ' . urlencode($event);
+        $url = $this->base . '/rooms/' . urldecode($id) . '/state/' . urlencode($event);
         $result = $this->http->get($url);
         return $result->content->display_name; //TODO P1 find den korrekt opbygning fra eksempel
     }
@@ -74,6 +74,12 @@ class MatrixClient
         $url = $this->base . '/rooms/' . urldecode($id) . '/state/ ' . urlencode($event);
         $result = $this->http->get($url);
         return $result->content->display_name; //TODO P1 find den korrekt opbygning fra eksempel
+    }
+
+    public function setRoomAlias(string $id, string $alias): void
+    {
+        $url = $this->base . '/directory/rooms/' . urldecode($alias);
+        $this->http->put($url, (object)['room_id' => $id]);
     }
 
     public function getRoomMembers(string $id): array

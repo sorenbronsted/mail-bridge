@@ -1,0 +1,16 @@
+{
+    "age": 65,
+    "content": {
+        "body": "test",
+        "msgtype": "m.text"
+    },
+    "event_id": "$spi9THRDC95JXTBH3oMsXYYeoKfbJyLMeh4wNX2H_Nc",
+    "origin_server_ts": 1626280279712,
+    "room_id": "!VJItOzJiILVWvvvXle:syntest.lan",
+    "sender": "@sb:syntest.lan",
+    "type": "m.room.message",
+    "unsigned": {
+        "age": 65
+    },
+    "user_id": "@sb:syntest.lan"
+}

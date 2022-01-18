@@ -9,13 +9,13 @@ class FetchMail
 {
     private AppServiceConfig $config;
     private Imap $imap;
-    private FileStore $fileStore;
+    private FileStore $store;
 
-    public function __construct(AppServiceConfig $config, Imap $imap, FileStore $fileStore)
+    public function __construct(AppServiceConfig $config, Imap $imap, FileStore $store)
     {
         $this->config = $config;
         $this->imap = $imap;
-        $this->fileStore = $fileStore;
+        $this->store = $store;
     }
 
     public function run()
@@ -49,10 +49,8 @@ class FetchMail
             if ($header->udate < $account->updated->format('U')) {
                 break;
             }
-            //TODO P1 use Mail
-            $filename = $account->uid . '-' . uniqid() . '.mime';
             $message = $this->imap->message($i);
-            $this->fileStore->write($filename, $message);
+            Mail::createFromMail($account, $this->store, $message);
         }
         $this->imap->close();
     }

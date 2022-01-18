@@ -79,7 +79,7 @@ class AppServiceCtrl
                 continue;
             }
 
-            if (User::isPuppet($event->user_id)) {
+            if (User::isPuppet($event->sender)) {
                 continue;
             }
 

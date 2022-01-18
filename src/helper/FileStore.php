@@ -18,10 +18,15 @@ class FileStore
         $this->ensureDir();
     }
 
+    public function exists(string $file): bool
+    {
+        return file_exists($this->root . '/' . $file);
+    }
+
     public function getFileInfo(string $file): SplFileInfo
     {
         $filename = $this->root . '/' . $file;
-        return new SplFileInfo($this->root . '/' . $file);
+        return new SplFileInfo($filename);
     }
 
     public function getFiles(): Finder

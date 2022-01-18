@@ -38,11 +38,11 @@ class ImportMailTest extends TestCase
 
     public function testRunDefault()
     {
-        $mail = Fixtures::mail($this->account, $this->store, 'multi_recipients.mime');
-        $message = $mail->parse($this->store);
+        $mail = Fixtures::mailFromFile($this->account, $this->store, 'multi_recipients.mime');
+        $message = $mail->getMessage($this->store);
         $name = $message->getHeader(HeaderConsts::SUBJECT)->getValue();
         $name = trim(substr($name, strpos($name, ':') + 1));
-        $alias = str_replace(' ', '-', strtolower($name));
+        $alias = Room::toAlias($name);
         $from = User::fromMail($message->getHeader(HeaderConsts::FROM)->getAddresses()[0], $this->config->domain);
         $ts = $message->getHeader(HeaderConsts::DATE);
 
@@ -85,7 +85,7 @@ class ImportMailTest extends TestCase
 
     public function testFail()
     {
-        Fixtures::mail($this->account, $this->store, 'multi_recipients.mime');
+        Fixtures::mailFromFile($this->account, $this->store, 'multi_recipients.mime');
 
         $client = $this->container->get(MatrixClient::class);
         $client->expects($this->once())->method('getRoomIdByAlias')->willThrowException(new Exception('', 404));
@@ -102,11 +102,11 @@ class ImportMailTest extends TestCase
 
     public function testImportMultiUserWithExistingRoom()
     {
-        $mail = Fixtures::mail($this->account, $this->store, 'multi_recipients.mime');
-        $message = $mail->parse($this->store);
+        $mail = Fixtures::mailFromFile($this->account, $this->store, 'multi_recipients.mime');
+        $message = $mail->getMessage($this->store);
         $name = $message->getHeader(HeaderConsts::SUBJECT)->getValue();
         $client = $this->container->get(MatrixClient::class);
-        $room = new Room($client, '1', strtolower(str_replace(' ', '-', $name)), $name, [Fixtures::puppet($this->config->domain)]);
+        $room = new Room($client, '1', Room::toAlias($name), $name, [Fixtures::puppet($this->config->domain)]);
 
         $client->expects($this->once())->method('getRoomIdByAlias')->willReturn($room->getId());
         $client->expects($this->once())->method('getRoomName')->willReturn($room->getName());
@@ -125,8 +125,8 @@ class ImportMailTest extends TestCase
 
     public function testImportDirect()
     {
-        $mail = Fixtures::mail($this->account, $this->store, 'direct.mime');
-        $message = $mail->parse($this->store);
+        $mail = Fixtures::mailFromFile($this->account, $this->store, 'direct.mime');
+        $message = $mail->getMessage($this->store);
         $from = User::fromMail($message->getHeader(HeaderConsts::FROM)->getAddresses()[0], $this->config->domain);
 
         $client = $this->container->get(MatrixClient::class);
@@ -146,8 +146,8 @@ class ImportMailTest extends TestCase
 
     public function testImportNoSubject()
     {
-        $mail = Fixtures::mail($this->account, $this->store, 'no_subject.mime');
-        $message = $mail->parse($this->store);
+        $mail = Fixtures::mailFromFile($this->account, $this->store, 'no_subject.mime');
+        $message = $mail->getMessage($this->store);
         $from = User::fromMail($message->getHeader(HeaderConsts::FROM)->getAddresses()[0], $this->config->domain);
 
         $client = $this->container->get(MatrixClient::class);
@@ -167,7 +167,7 @@ class ImportMailTest extends TestCase
 
     public function testImportWithWrongFileNameFormat()
     {
-        Fixtures::mail($this->account, $this->store, 'empty.mime');
+        Fixtures::mailFromFile($this->account, $this->store, 'empty.mime');
 
         $task = $this->container->get(ImportMail::class);
         $task->run();

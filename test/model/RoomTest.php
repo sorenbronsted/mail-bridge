@@ -2,6 +2,7 @@
 
 namespace bronsted;
 
+use Exception;
 use stdClass;
 use ZBateson\MailMimeParser\Header\Part\AddressPart;
 use ZBateson\MbWrapper\MbWrapper;
@@ -47,7 +48,7 @@ class RoomTest extends TestCase
         $this->assertFalse($room->hasMember(new User('@baz:bar.com', 'Baz Bar')));
     }
 
-    public function testGetByAlias()
+    public function testGetByAliasOk()
     {
         $id = '#some-id:nowhere';
         $alias = 'some-alias';
@@ -67,6 +68,86 @@ class RoomTest extends TestCase
         $this->assertEquals($user, $room->getMembers()[0]);
     }
 
+    public function testGetByAliasNotFound()
+    {
+        $mock = $this->container->get(MatrixClient::class);
+        $mock->method('getRoomIdByAlias')->willThrowException(new Exception('Some remote error', 404));
+        $this->expectException(NotFoundException::class);
+        Room::getByAlias($mock, 'some-alias');
+    }
+
+    public function testGetByAliasFail()
+    {
+        $mock = $this->container->get(MatrixClient::class);
+        $mock->method('getRoomIdByAlias')->willThrowException(new Exception('Some remote error', 500));
+        $this->expectExceptionCode(500);
+        Room::getByAlias($mock, 'some-alias');
+    }
+
+    public function testGetByIdOk()
+    {
+        $id = '#some-id:nowhere';
+        $alias = 'some-alias';
+        $name = 'My room';
+        $user = Fixtures::puppet($this->config->domain);
+
+        $mock = $this->container->get(MatrixClient::class);
+        $mock->method('getRoomAlias')->willReturn($alias);
+        $mock->method('getRoomName')->willReturn($name);
+        $mock->method('getRoomMembers')->willReturn([$user]);
+
+        $room = Room::getById($mock, $id);
+        $this->assertEquals($id, $room->getId());
+        $this->assertEquals($alias, $room->getAlias());
+        $this->assertEquals($name, $room->getName());
+        $this->assertEquals(1, count($room->getMembers()));
+        $this->assertEquals($user, $room->getMembers()[0]);
+    }
+
+    public function testGetByIdMissingAlias()
+    {
+        $id = '#some-id:nowhere';
+        $name = 'My room';
+        $alias = Room::toAlias($name);
+        $user = Fixtures::puppet($this->config->domain);
+
+        $mock = $this->container->get(MatrixClient::class);
+        $mock->method('getRoomAlias')->willThrowException(new Exception('Not found', 404));
+        $mock->method('getRoomName')->willReturn($name);
+        $mock->method('getRoomMembers')->willReturn([$user]);
+
+        $room = Room::getById($mock, $id);
+        $this->assertEquals($id, $room->getId());
+        $this->assertEquals($alias, $room->getAlias());
+        $this->assertEquals($name, $room->getName());
+        $this->assertEquals(1, count($room->getMembers()));
+        $this->assertEquals($user, $room->getMembers()[0]);
+    }
+
+    public function testGetByIdNotFound()
+    {
+        $mock = $this->container->get(MatrixClient::class);
+        $mock->method('getRoomName')->willThrowException(new Exception('Not found', 404));
+        $this->expectException(NotFoundException::class);
+        Room::getByid($mock, '1');
+    }
+
+    public function testGetByIdFailOnName()
+    {
+        $mock = $this->container->get(MatrixClient::class);
+        $mock->method('getRoomName')->willThrowException(new Exception('Some remote error', 500));
+        $this->expectExceptionCode(500);
+        Room::getByid($mock, '1');
+    }
+
+    public function testGetByIdFailOnAlias()
+    {
+        $mock = $this->container->get(MatrixClient::class);
+        $mock->method('getRoomAlias')->willThrowException(new Exception('Some remote error', 500));
+        $this->expectExceptionCode(500);
+        Room::getByid($mock, '1');
+    }
+
     public function testAddUser()
     {
         $name = 'Baz Bar';
@@ -82,5 +163,12 @@ class RoomTest extends TestCase
         $room->addUser($newUser, $account);
 
         $this->assertEquals(2, count($room->getMembers()));
+    }
+
+    public function testInvalidRoomProperties()
+    {
+        $mock = $this->container->get(MatrixClient::class);
+        $this->expectExceptionMessageMatches('/empty/');
+        new Room($mock, '', '', '', []);
     }
 }

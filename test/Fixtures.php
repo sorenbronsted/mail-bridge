@@ -46,17 +46,14 @@ class Fixtures
         return $account;
     }
 
-    public static function mail(Account $account, FileStore $store, string $fixtureMailName): Mail
+    public static function mailFromFile(Account $account, FileStore $store, string $fixtureMailName): Mail
     {
-        $mail = new Mail();
-        $mail->id = '1';
-        $mail->file_id = uniqid();
-        $mail->action = Mail::ActionImport;
-        $mail->account_uid = $account->uid;
-        $mail->save();
+        return Mail::createFromMail($account, $store, file_get_contents(__DIR__ . '/data/' . $fixtureMailName));
+    }
 
-        $store->write($mail->file_id, file_get_contents(__DIR__ . '/data/' . $fixtureMailName));
-        return $mail;
+    public static function mailFromEvent(MatrixClient $client, AppServiceConfig $config, Http $http, FileStore $store, ?stdClass $event = null): Mail
+    {
+        return Mail::createFromEvent($client, $config, $http, $store, $event ?? self::event());
     }
 
     public static function accountData(): AccountData
@@ -76,25 +73,8 @@ class Fixtures
         return $fixture;
     }
 
-    public static function event(): stdClass
+    public static function event(string $name): stdClass
     {
-        return json_decode(file_get_contents(__DIR__ . '/data/event.json'));
-    }
-
-    public static function eventUrl(): stdClass
-    {
-        $event = json_decode(file_get_contents(__DIR__ . '/data/event.json'));
-        $event->content->msgtype = 'm.file';
-        $event->content->url = 'http://nowhere/me.png';
-        $event->content->body = 'me';
-        return $event;
-    }
-
-    public static function eventUnknown(): stdClass
-    {
-        $event = new stdClass();
-        $event->content = new stdClass();
-        $event->content->msgtype = 'm.xx';
-        return $event;
+        return json_decode(file_get_contents(__DIR__ . '/data/' . $name));
     }
 }

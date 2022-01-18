@@ -50,7 +50,7 @@ class ImportMail
 
     private function import(Mail $mail)
     {
-        $message = $mail->parse($this->store);
+        $message = $mail->getMessage($this->store);
         $header = $this->parse($message);
         $account = Account::getByUid($mail->account_uid);
 
@@ -87,7 +87,7 @@ class ImportMail
             $result->subject = 'No subject ' . $datetime->format('Y-m-d H:i');
         }
 
-        $result->alias = strtolower(str_replace(' ', '-', $result->subject));
+        $result->alias = Room::toAlias($result->subject);
 
         $from = $message->getHeader(HeaderConsts::FROM)->getAddresses()[0];
         $result->from = User::fromMail($from, $this->config->domain);

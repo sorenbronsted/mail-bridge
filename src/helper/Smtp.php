@@ -42,7 +42,7 @@ class Smtp
     {
         $accountData = $mail->getAccountData($config);
         $this->open($accountData);
-        $email = $mail->getEmail($store);
+        $email = $mail->getMessage($store);
         $this->mailer->send($email);
         $this->close();
     }

@@ -1,0 +1,21 @@
+{
+    "content": {
+        "body": "something-important.doc",
+        "filename": "something-important.doc",
+        "info": {
+            "mimetype": "application/msword",
+            "size": 46144
+        },
+        "msgtype": "m.file",
+        "url": "mxc://example.org/FHyPlCeYUSFFxlgbQYZmoEoe"
+    },
+    "event_id": "$143273582443PhrSn:example.org",
+    "origin_server_ts": 1432735824653,
+    "room_id": "!jEsUZKDJdhlrceRyVU:example.org",
+    "sender": "@example:example.org",
+    "type": "m.room.message",
+    "unsigned": {
+        "age": 1234
+    },
+    "user_id": "@sb:syntest.lan"
+}

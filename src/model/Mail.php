@@ -36,16 +36,49 @@ class Mail extends DbObject
         return $store->getFileInfo($this->file_id);
     }
 
+    public function getAccountData(AppServiceConfig $config): AccountData
+    {
+        $account = Account::getByUid($this->account_uid);
+        return $account->getAccountData($config);
+    }
+
+    public function getMessage(FileStore $store)
+    {
+        if ($this->action == self::ActionImport) {
+            return Message::from($this->getFileInfo($store)->openFile(), true);
+        }
+        $info = $this->getFileInfo($store);
+        return new RawMessage($info->openFile('r')->fread($info->getSize()));
+    }
+
+    public function save(): void
+    {
+        $this->validate();
+        parent::save();
+    }
+
     public function destroy(Filestore $store): void
     {
         $store->remove($this->file_id);
         parent::delete();
     }
 
-    public static function createFromEvent(MatrixClient $client, AppServiceConfig $config, Http $http, Filestore $store, stdClass $event)
+    public static function createFromMail(Account $account, FileStore $store, string $message): Mail
+    {
+        $mail = new Mail();
+        $mail->id = uniqid();
+        $mail->file_id = $mail->id . '.mime';
+        $mail->account_uid = $account->uid;
+        $mail->action = self::ActionImport;
+        $store->write($mail->file_id, $message);
+        $mail->save();
+        return $mail;
+    }
+
+    public static function createFromEvent(MatrixClient $client, AppServiceConfig $config, Http $http, Filestore $store, stdClass $event): Mail
     {
         $account = Account::getOneBy(['user_id' => $event->sender]);
-        $message = self::createMailFromEvent($client, $account->getAccountData($config), $http, $event);
+        $message = self::fromEvent($client, $account->getAccountData($config), $http, $event);
 
         $mail = new Mail();
         $mail->id = $event->event_id;
@@ -54,29 +87,10 @@ class Mail extends DbObject
         $mail->action = self::ActionSend;
         $store->write($mail->file_id, $message);
         $mail->save();
-
         return $mail;
     }
 
-    public function getAccountData(AppServiceConfig $config): AccountData
-    {
-        $account = Account::getByUid($this->account_uid);
-        return $account->getAccountData($config);
-    }
-
-    public function getEmail(FileStore $store): RawMessage
-    {
-        $info = $this->getFileInfo($store);
-        //TODO unserialiase ?
-        return new RawMessage($info->openFile('r')->fread($info->getSize()));
-    }
-
-    public function parse(FileStore $store): Message
-    {
-        return Message::from($this->getFileInfo($store)->openFile(), true);
-    }
-
-    private static function createMailFromEvent(MatrixClient $client, AccountData $accountData, Http $http, stdClass $event): string
+    private static function fromEvent(MatrixClient $client, AccountData $accountData, Http $http, stdClass $event): string
     {
         $room = Room::getById($client, $event->room_id);
 
@@ -112,5 +126,18 @@ class Mail extends DbObject
         }
 
         return $result;
+    }
+
+    private function validate()
+    {
+        foreach (['id', 'file_id', 'action', 'account_uid'] as $name) {
+            if (empty($this->$name)) {
+                throw new Exception("$name must not be empty");
+            }
+        }
+
+        if (!in_array($this->action, [self::ActionImport, self::ActionSend])) {
+            throw new Exception('Action not valid');
+        }
     }
 }

@@ -23,7 +23,7 @@ class SendMailTest extends TestCase
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
-        $mail = Fixtures::mail($account, $this->store, 'direct.mime');
+        $mail = Fixtures::mailFromFile($account, $this->store, 'direct.mime');
         $mail->action = Mail::ActionSend;
         $mail->save();
 
@@ -56,7 +56,7 @@ class SendMailTest extends TestCase
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
-        $mail = Fixtures::mail($account, $this->store, 'direct.mime');
+        $mail = Fixtures::mailFromFile($account, $this->store, 'direct.mime');
         $mail->action = Mail::ActionSend;
         $mail->save();
 
