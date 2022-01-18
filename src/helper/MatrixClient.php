@@ -65,15 +65,15 @@ class MatrixClient
         $event = 'm.room.name';
         $url = $this->base . '/rooms/' . urldecode($id) . '/state/' . urlencode($event);
         $result = $this->http->get($url);
-        return $result->content->display_name; //TODO P1 find den korrekt opbygning fra eksempel
+        return $result->content->name;
     }
 
     public function getRoomAlias(string $id): string
     {
-        $event = 'm.room.alias';
+        $event = 'm.room.canonical_alias';
         $url = $this->base . '/rooms/' . urldecode($id) . '/state/ ' . urlencode($event);
         $result = $this->http->get($url);
-        return $result->content->display_name; //TODO P1 find den korrekt opbygning fra eksempel
+        return $result->content->alias;
     }
 
     public function setRoomAlias(string $id, string $alias): void

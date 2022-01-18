@@ -40,8 +40,8 @@ class Http
 
     public function getStream(string $url): StreamInterface
     {
-        //TODO P1 url is a mxc://<server-name>/<id> so parsing is needed
-        $response = $this->client->get($this->config->matrixUrl . $url, $this->header);
+        $urlParts = parse_url($url);
+        $response = $this->client->get($this->config->matrixUrl . $urlParts['path'], $this->header);
         $code = $response->getStatusCode();
         if ($code != 200) {
             throw new Exception("Request failed: " . $url, $code);
