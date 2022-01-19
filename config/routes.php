@@ -4,9 +4,16 @@ namespace bronsted;
 
 use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Message\ResponseInterface as Response;
 
 function routes(App $app): void
 {
+    $app->get('/health', function (Request $request, Response $response) {
+        $response->getBody()->write("I'm alive");
+        return $response;
+    });
+
     // Account
     $app->get('/account/login', [AppServiceCtrl::class, 'login']);
 

@@ -1,6 +1,7 @@
 Alle P1 skal laves inden egen drift:
 
 P1:
+ - log http requests
  - upload mail med http post, hvor body er mime og som gemmes lige som fetch fra imap
  - brug reactphp og tasks, som henter, importer og sender mails
  - Søg efter TODO P1
