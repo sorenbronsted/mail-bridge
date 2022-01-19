@@ -2,6 +2,7 @@
 
 namespace bronsted;
 
+use DateTime;
 use Exception;
 
 use stdClass;
@@ -33,7 +34,7 @@ class ImportMail
         $mail = Mail::getBy(['action' => Mail::ActionImport, 'fail_code' => 0])->current();
         if (!$mail) {
             // Retry failed imports
-            $mail = Mail::getBy(['action' => Mail::ActionImport])->current();
+            $mail = Mail::getBy(['action' => Mail::ActionImport], ['desc', 'last_try'])->current();
             if (!$mail) {
                 return;
             }
@@ -44,6 +45,7 @@ class ImportMail
         } catch (Throwable $t) {
             Log::error($t);
             $mail->fail_code = $t->getCode();
+            $mail->last_try = new DateTime();
             $mail->save();
         }
     }

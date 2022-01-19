@@ -26,7 +26,7 @@ class Imap
 
     public function message(int $i): string
     {
-        //TODO P1 make it streamable
+        //TODO P2 make it streamable
         return $this->isOk(imap_fetchheader($this->connection, $i)) . $this->isOk(imap_body($this->connection, $i));
     }
 

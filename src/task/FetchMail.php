@@ -21,17 +21,17 @@ class FetchMail
     public function run()
     {
         $since = new DateTime("-5 min");
-        $account = Account::getWhere(" updated < :since", ['since' => $since], [])->current();
+        $account = Account::getWhere(" updated < :since", ['since' => $since])->current();
         if (!$account) {
             return;
         }
+
         try {
             $this->fetch($account);
-        } catch (Throwable $t) {
-            Log::error($t);
-        } finally {
             $account->updated = new DateTime();
             $account->save();
+        } catch (Throwable $t) {
+            Log::error($t);
         }
     }
 

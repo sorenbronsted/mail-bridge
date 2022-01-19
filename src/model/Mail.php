@@ -2,6 +2,7 @@
 
 namespace bronsted;
 
+use DateTime;
 use Exception;
 use SplFileInfo;
 use stdClass;
@@ -20,6 +21,7 @@ class Mail extends DbObject
     protected ?int $fail_code;
     protected ?int $action;
     protected ?int $account_uid;
+    protected DateTime $last_try;
 
     public function __construct(?string $id = null, ?string $file_id = null, ?int $action = null, ?int $account_uid = null)
     {
@@ -29,6 +31,7 @@ class Mail extends DbObject
         $this->action = $action;
         $this->account_uid = $account_uid;
         $this->fail_code = 0;
+        $this->last_try = new DateTime();
     }
 
     public function getFileInfo(FileStore $store): SplFileInfo

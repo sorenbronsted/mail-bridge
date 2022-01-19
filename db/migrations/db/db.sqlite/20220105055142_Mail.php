@@ -10,6 +10,7 @@ class Mail extends Ruckusing_Migration_Base
         $table->column('file_id', 'string', ['limit' => 32, 'null' => false]);
         $table->column('fail_code', 'integer', ['null' => false]);
         $table->column('action', 'integer', ['null' => false]);
+        $table->column('last_try', 'datetime', ['null' => false]);
         $table->column('account_uid', 'integer', ['null' => false]);
         $table->finish();
     }//up()
