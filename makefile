@@ -1,5 +1,8 @@
 .PHONY: test
 
+all:
+	@echo "update-to-date"
+
 empty:
 	rm db/db.sqlite
 
@@ -14,13 +17,10 @@ permissions:
 	chown sobr:www-data db/db.sqlite
 
 serve:
-	php -S 0.0.0.0:8001 -t public
+	vendor/bin/php-watcher public/index.php
 
 debug:
-	export XDEBUG_MODE=debug;php -S 0.0.0.0:8001 -t public
-
-import:
-	php src/cli/imap_import.php
+	export XDEBUG_MODE=debug;vendor/bin/php-watcher public/index.php
 
 test:
 	vendor/bin/phpunit
