@@ -24,25 +24,14 @@ class AppServiceCtrl
         $this->store = $store;
     }
 
-    public function loginToken(ServerRequestInterface $request, ResponseInterface $response): MessageInterface
+    public function login(ServerRequestInterface $request, ResponseInterface $response): MessageInterface
     {
         $params = (object)$request->getQueryParams();
         if (!isset($params->id)) {
             return $response->withStatus(422);
         }
-        $token = Crypto::encrypt($params->id, $this->config->key);
-        $response->getBody()->write(json_encode(['token' => $token]));
-        return $response->withHeader('Content-Type', 'application/json');
-    }
+        $id = $params->id;
 
-    public function login(ServerRequestInterface $request, ResponseInterface $response): MessageInterface
-    {
-        $params = (object)$request->getQueryParams();
-        if (!isset($params->token)) {
-            return $response->withStatus(422);
-        }
-
-        $id = Crypto::decrypt($params->token, $this->config->key);
         //TODO P2 jwt cookie
         $cookie = new SetCookie($this->config->cookieName, $id, time() + 60 * 60 * 24 * 30 * 12, '/', 'localhost', true, true, 'lax');
         $response = $cookie->addToResponse($response);

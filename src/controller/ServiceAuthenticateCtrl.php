@@ -21,6 +21,7 @@ class ServiceAuthenticateCtrl
 
     public function __invoke(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        //TODO P1 check also header bearer token
         $args = (object)$request->getQueryParams();
         if (!isset($args->access_token)) {
             return $this->responseFactory->createResponse(403);

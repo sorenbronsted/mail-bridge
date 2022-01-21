@@ -14,11 +14,8 @@ function routes(App $app): void
         return $response;
     });
 
-    // Account
-    $app->get('/account/login', [AppServiceCtrl::class, 'login']);
-
     $app->group('/', function (RouteCollectorProxy $group) {
-        $group->get('account/login/token', [AppServiceCtrl::class, 'loginToken']);
+        $group->get('account/login', [AppServiceCtrl::class, 'login']);
         // Old synapse api
         $group->put('transactions/{txnId}', [AppServiceCtrl::class, 'events']);
         $group->put('_matrix/app/v1/transactions/{txnId}', [AppServiceCtrl::class, 'events']);

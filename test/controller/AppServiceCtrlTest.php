@@ -32,41 +32,11 @@ class AppServiceCtrlTest extends TestCase
         $this->account->save();
     }
 
-    public function testLoginTokenMissingCredentials()
-    {
-        $params = new stdClass();
-        $params->id = Fixtures::user()->getId();
-
-        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
-        $resp = $this->app->handle($req);
-        $this->assertEquals(403, $resp->getStatusCode());
-    }
-
-    public function testLoginTokenMissingParameter()
-    {
-        $params = new stdClass();
-        $params->access_token = $this->config->tokenGuest[0];
-
-        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
-        $resp = $this->app->handle($req);
-        $this->assertEquals(422, $resp->getStatusCode());
-    }
-
     public function testLogin()
     {
         $params = new stdClass();
         $params->access_token = $this->config->tokenGuest[0];
         $params->id = Fixtures::user()->getId();
-
-        $req = $this->createRequest('GET', '/account/login/token?' . http_build_query($params));
-        $resp = $this->app->handle($req);
-        $this->assertEquals(200, $resp->getStatusCode());
-        $resp->getBody()->rewind();
-        $result = json_decode($resp->getBody());
-        $this->assertNotEmpty($result->token);
-
-        $params = new stdClass();
-        $params->token = $result->token;
 
         $req = $this->createRequest('GET', '/account/login?' . http_build_query($params));
         $resp = $this->app->handle($req);
@@ -77,7 +47,7 @@ class AppServiceCtrlTest extends TestCase
     {
         $req = $this->createRequest('GET', '/account/login');
         $resp = $this->app->handle($req);
-        $this->assertEquals(422, $resp->getStatusCode());
+        $this->assertEquals(403, $resp->getStatusCode());
     }
 
 

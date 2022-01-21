@@ -7,9 +7,10 @@ use React\EventLoop\Loop;
 use React\Http\HttpServer;
 use React\Socket\SocketServer;
 use Slim\App;
+use Slim\Psr7\Factory\StreamFactory;
+use SplFileInfo;
+use Symfony\Component\Mime\MimeTypes;
 use Throwable;
-
-use function React\Promise\Timer\sleep;
 
 require 'vendor/autoload.php';
 
@@ -41,14 +42,24 @@ function runTasks(App $app)
 function run(array $argv)
 {
     $app = bootstrap();
-    //The stand way: $app->run();
 
     runTasks($app);
     $http = new HttpServer(
         function (Request $request) use ($app) {
             $response = null;
             try {
-                $response = $app->handle($request);
+                // Static file content?
+                $fileInfo = new SplFileInfo( __DIR__ . '/' . $request->getUri()->getPath());
+                if ($fileInfo->isFile()) {
+                    $fileType = MimeTypes::getDefault()->getMimeTypes($fileInfo->getExtension())[0];
+                    $body = (new StreamFactory())->createStreamFromFile($fileInfo->getPathname());
+                    $response = $app->getResponseFactory()->createResponse(200)
+                        ->withHeader('Content-Type', $fileType)
+                        ->withBody($body);
+                }
+                else {
+                    $response = $app->handle($request);
+                }
             } catch (Throwable $e) {
                 Log::error($e);
                 $code = $e->getCode() >= 100 && $e->getCode() <= 599 ? $e->getCode() : 500;
@@ -57,7 +68,7 @@ function run(array $argv)
             return $response;
         }
     );
-    $socket = new SocketServer('127.0.0.1:8000');
+    $socket = new SocketServer('0.0.0.0:8000'); //TODO P1 must configable
     $http->listen($socket);
 }
 
