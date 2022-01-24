@@ -2,6 +2,7 @@
 
 namespace bronsted;
 
+use Exception;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -21,12 +22,27 @@ class ServiceAuthenticateCtrl
 
     public function __invoke(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        //TODO P1 check also header bearer token
-        $args = (object)$request->getQueryParams();
-        if (!isset($args->access_token)) {
+        $accessToken = null;
+        // Is it part of the request?
+        $args = $request->getQueryParams();
+        if (empty($args)) {
+            // Is it a Bearer token?
+            $args = $request->getHeader('Authorization');
+            if (!empty($args)) {
+                // Format: Bearer: <value>
+                $parts = explode(':', $args[0]);
+                if (count($parts) >= 2) {
+                    $accessToken = $parts[1];
+                }
+            }
+        }
+        else {
+            $accessToken = $args['access_token'];
+        }
+        if (empty($accessToken)) {
             return $this->responseFactory->createResponse(403);
         }
-        if (!in_array($args->access_token, $this->config->tokenGuest)) {
+        if (!in_array($accessToken, $this->config->tokenGuest)) {
             return $this->responseFactory->createResponse(401);
         }
         return $handler->handle($request);
