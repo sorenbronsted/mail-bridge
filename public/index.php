@@ -12,7 +12,7 @@ use SplFileInfo;
 use Symfony\Component\Mime\MimeTypes;
 use Throwable;
 
-require 'vendor/autoload.php';
+require dirname(__DIR__) . '/vendor/autoload.php';
 
 function runTasks(App $app)
 {
@@ -61,14 +61,23 @@ function run(array $argv)
                     $response = $app->handle($request);
                 }
             } catch (Throwable $e) {
-                Log::error($e);
                 $code = $e->getCode() >= 100 && $e->getCode() <= 599 ? $e->getCode() : 500;
+                if ($code >= 500) {
+                    Log::error($e);
+                }
                 $response = $app->getResponseFactory()->createResponse($code);
             }
+            Log::info('{method} {uri} {code}', [
+                'method' => $request->getMethod(),
+                'uri' => $request->getUri(),
+                'code' => $response->getStatusCode()
+            ]);
             return $response;
         }
     );
-    $socket = new SocketServer('0.0.0.0:8000'); //TODO P1 must configable
+    $interface = isset($argv['interface']) ? isset($argv['interface']) : '0.0.0.0';
+    $port = isset($argv['port']) ? isset($argv['port']) : '8000';
+    $socket = new SocketServer($interface . ':' . $port);
     $http->listen($socket);
 }
 

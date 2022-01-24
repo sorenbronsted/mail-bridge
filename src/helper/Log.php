@@ -14,18 +14,26 @@ class Log
         self::$instance = $instance;
     }
 
-    public static function __callStatic($name, $arguments)
+    public static function __callStatic(string $name, $args)
     {
-        if ($arguments[0] instanceof Throwable) {
-            $th = $arguments[0];
-            self::$instance->$name($th->getMessage() . ' code: ' . $th->getCode() .  ' ' . $th->getFile() . ':' . $th->getLine());
-            foreach($th->getTrace() as $trace) {
+        if ($args[0] instanceof Throwable) {
+            $th = $args[0];
+            self::$instance->$name('{message} {code} {file}:{line}', [
+                'message' => $th->getMessage(),
+                'code' => $th->getCode(),
+                'file' => $th->getFile(),
+                'line' => $th->getLine()
+            ]);
+            foreach ($th->getTrace() as $trace) {
                 $trace = (object)$trace;
-                self::$instance->$name($trace->function . ' ' . ($trace->file ?? '') . ':' . ($trace->line ?? ''));
+                self::$instance->$name('{function} {file}:{line}', [
+                    'function' => $trace->function,
+                    'file' => ($trace->file ?? ''),
+                    'line' => ($trace->line ?? '')
+                ]);
             }
-            }
-        else {
-            self::$instance->$name($arguments[0], $arguments[1] ?? []);
+        } else {
+            self::$instance->$name($args[0], $args[1]);
         }
     }
 }
