@@ -20,7 +20,7 @@ serve:
 	vendor/bin/php-watcher public/index.php
 
 debug:
-	export XDEBUG_MODE=debug;vendor/bin/php-watcher public/index.php
+	export XDEBUG_MODE=debug;php public/index.php
 
 test:
 	vendor/bin/phpunit
