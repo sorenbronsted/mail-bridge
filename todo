@@ -1,6 +1,7 @@
 Alle P1 skal laves inden egen drift:
 
 P1:
+ - test upload, fetch lokalt og der efter opsætning i eget miljø
  - fetch mail er ikke sikker, så der skal findes en anden løsning - noget med seen flag måske
  - upload mail med http post, hvor body er mime og som gemmes lige som fetch fra imap
  - Søg efter TODO P1

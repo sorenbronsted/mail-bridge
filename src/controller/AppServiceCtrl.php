@@ -24,6 +24,14 @@ class AppServiceCtrl
         $this->store = $store;
     }
 
+    public function upload(ServerRequestInterface $request, ResponseInterface $response, string $user_id): MessageInterface
+    {
+        $account = Account::getOneBy(['user_id' => $user_id]);
+        $message = $request->getBody()->getContents();
+        Mail::createFromMail($account, $this->store, $message);
+        return $response->withStatus(201);
+    }
+
     public function login(ServerRequestInterface $request, ResponseInterface $response): MessageInterface
     {
         $params = (object)$request->getQueryParams();

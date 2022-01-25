@@ -16,9 +16,10 @@ function routes(App $app): void
 
     $app->group('/', function (RouteCollectorProxy $group) {
         $group->get('account/login', [AppServiceCtrl::class, 'login']);
+        $group->post('upload/{user_id}', [AppServiceCtrl::class, 'upload']);
         // Old synapse api
         $group->put('transactions/{txnId}', [AppServiceCtrl::class, 'events']);
-        $group->put('_matrix/app/v1/transactions/{txnId}', [AppServiceCtrl::class, 'events']);
+        $group->put('_matrix/app/v3/transactions/{txnId}', [AppServiceCtrl::class, 'events']);
     })->add(ServiceAuthenticateCtrl::class);
 
     $app->group('/account', function (RouteCollectorProxy $group) {
