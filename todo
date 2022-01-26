@@ -3,7 +3,6 @@ Alle P1 skal laves inden egen drift:
 P1:
  - test upload, fetch lokalt og der efter opsætning i eget miljø
  - fetch mail er ikke sikker, så der skal findes en anden løsning - noget med seen flag måske
- - upload mail med http post, hvor body er mime og som gemmes lige som fetch fra imap
  - Søg efter TODO P1
 
 P2:
@@ -12,6 +11,5 @@ P2:
  - overvågning af fejl gennem logstash el. lign
  - tagge mails sendt fra denne appservice, så de kan genkendes igen
  - import at ældre mails skal ske fra inbox og sent mapperne, så dialogen kan følges.
- - i stedet for cron job kan php swoole måske bruges
 
 

@@ -81,7 +81,7 @@ class Mail extends DbObject
     public static function createFromEvent(MatrixClient $client, AppServiceConfig $config, Http $http, Filestore $store, stdClass $event): Mail
     {
         $account = Account::getOneBy(['user_id' => $event->sender]);
-        $message = self::fromEvent($client, $account->getAccountData($config), $http, $event);
+        $message = self::fromEvent($client, $config, $account->getAccountData($config), $http, $event);
 
         $mail = new Mail();
         $mail->id = $event->event_id;
@@ -93,9 +93,9 @@ class Mail extends DbObject
         return $mail;
     }
 
-    private static function fromEvent(MatrixClient $client, AccountData $accountData, Http $http, stdClass $event): string
+    private static function fromEvent(MatrixClient $client, AppServiceConfig $config, AccountData $accountData, Http $http, stdClass $event): string
     {
-        $room = Room::getById($client, $event->room_id);
+        $room = Room::getById($client, $config, $event->room_id);
 
         $mail = new Email();
         $mail->from(new Address($accountData->email, $accountData->user_name))->subject($room->getName());

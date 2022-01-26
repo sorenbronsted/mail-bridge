@@ -31,3 +31,5 @@ coverage:
 coverage-report:
 	export XDEBUG_MODE=coverage;vendor/bin/phpunit --coverage-html build
 
+upload:
+	curl -v -XPOST http://localhost:8000/upload/@sb:syntest.lan?access_token=ugw8243igya57aaABGFfgeyu --data-binary @$(FILE) -H "Content-Type: application/octet-stream"

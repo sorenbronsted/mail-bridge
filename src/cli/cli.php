@@ -6,6 +6,7 @@ use Exception;
 
 require 'vendor/autoload.php';
 
+//TODO P2 use something like symfony/console
 function run(array $args)
 {
     if (empty($args)) {

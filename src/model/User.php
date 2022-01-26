@@ -39,12 +39,12 @@ class User
         }
     }
 
-    public static function fromMail(AddressPart $address, $domain)
+    public static function fromMail(AddressPart $address, AppServiceConfig $config)
     {
         return new self(
             strtolower($address->getEmail()),
             trim($address->getName()) ?? '',
-            $domain
+            $config->domain
         );
     }
 

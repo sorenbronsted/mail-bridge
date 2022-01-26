@@ -19,7 +19,7 @@ class SendMailTest extends TestCase
 
     public function testRunDefault()
     {
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
@@ -38,7 +38,7 @@ class SendMailTest extends TestCase
 
     public function testRunNoWork()
     {
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();
@@ -52,7 +52,7 @@ class SendMailTest extends TestCase
 
     public function testFail()
     {
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
         $account->save();

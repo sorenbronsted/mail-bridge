@@ -44,8 +44,8 @@ class SmtpTest extends TestCase
         $account->save();
 
         $this->client->method('getRoomName')->willReturn('Some name');
-        $this->client->method('getRoomAlias')->willReturn('some-alias');
-        $this->client->method('getRoomMembers')->willReturn([Fixtures::puppet($this->config->domain)]);
+        $this->client->method('getRoomAlias')->willReturn(Room::toAlias($this->config, 'Some name'));
+        $this->client->method('getRoomMembers')->willReturn([Fixtures::puppet($this->config)]);
         $mail = Fixtures::mailFromEvent($this->client, $this->config, $this->http, $this->store, $event);
 
 

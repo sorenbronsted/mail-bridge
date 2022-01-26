@@ -89,10 +89,8 @@ class ImportMail
             $result->subject = 'No subject ' . $datetime->format('Y-m-d H:i');
         }
 
-        $result->alias = Room::toAlias($result->subject);
-
         $from = $message->getHeader(HeaderConsts::FROM)->getAddresses()[0];
-        $result->from = User::fromMail($from, $this->config->domain);
+        $result->from = User::fromMail($from, $this->config);
         return $result;
     }
 
@@ -100,15 +98,15 @@ class ImportMail
     {
         $room = null;
         try {
-            $room = Room::getByAlias($this->client, $header->alias);
+            $room = Room::getBySubject($this->client, $this->config, $header->subject);
         } catch (NotFoundException $e) {
-            $room = Room::create($this->client, $header->alias, $header->subject, $header->from, false);
+            $room = Room::create($this->client, $this->config, $header->subject, $header->subject, $header->from, false);
         }
 
-        $room->addUser($header->from, $account);
+        $room->addUser($this->client, $header->from, $account);
         foreach ($header->to->getAddresses() as $address) {
-            $user = User::fromMail($address, $this->config->domain);
-            $room->addUser($user, $account);
+            $user = User::fromMail($address, $this->config);
+            $room->addUser($this->client, $user, $account);
         }
         return $room;
     }
@@ -117,9 +115,9 @@ class ImportMail
     {
         $room = null;
         try {
-            $room = Room::getByAlias($this->client, $header->from->getId());
+            $room = Room::getBySubject($this->client, $this->config, $header->from->getId());
         } catch (NotFoundException $e) {
-            $room = Room::create($this->client, $header->from->getId(), $header->from->getName(), $header->from, true);
+            $room = Room::create($this->client, $this->config, $header->from->getId(), $header->from->getName(), $header->from, true);
         }
         return $room;
     }

@@ -18,6 +18,7 @@ use ZBateson\MailMimeParser\Message;
 class MatrixClient
 {
     private Http $http;
+    private AppServiceConfig $config;
     private string $base = '/_matrix/client/v3';
 
     public function __construct(Http $http, AppServiceConfig $config)

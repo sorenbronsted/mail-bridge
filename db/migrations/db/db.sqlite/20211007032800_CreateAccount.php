@@ -1,6 +1,6 @@
 <?php
 
-class Account extends Ruckusing_Migration_Base
+class CreateAccount extends Ruckusing_Migration_Base
 {
     public function up()
     {

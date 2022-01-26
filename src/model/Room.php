@@ -6,15 +6,13 @@ use Exception;
 
 class Room
 {
-    private MatrixClient $client;
     private string $id;
     private string $alias;
     private string $name;
     private array $members;
 
-    public function __construct(MatrixClient $client, string $id, string $alias, string $name, array $members)
+    public function __construct(string $id, string $alias, string $name, array $members)
     {
-        $this->client = $client;
         $this->id = $id;
         $this->alias = $alias;
         $this->name = $name;
@@ -42,10 +40,11 @@ class Room
         return $this->members;
     }
 
-    public static function create(MatrixClient $client, string $alias, string $name, User $creator, bool $direct): Room
+    public static function create(MatrixClient $client, AppServiceConfig $config, string $subject, string $name, User $creator, bool $direct): Room
     {
+        $alias = self::toAlias($config, $subject);
         $id = $client->createRoom($name, $alias, $creator, $direct);
-        $room = new Room($client, $id, $alias, $name, [$creator]);
+        $room = new Room($id, $alias, $name, [$creator]);
         return $room;
     }
 
@@ -59,13 +58,14 @@ class Room
         return false;
     }
 
-    public static function getByAlias(MatrixClient $client, string $alias): Room
+    public static function getBySubject(MatrixClient $client, AppServiceConfig $config, string $subject): Room
     {
         try {
+            $alias = self::toAlias($config, $subject);
             $id = $client->getRoomIdByAlias($alias);
             $name = $client->getRoomName($id);
             $members = $client->getRoomMembers($id);
-            return new Room($client, $id, $alias, $name, $members);
+            return new Room($id, $alias, $name, $members);
         } catch (Exception $e) {
             if ($e->getCode() == 404) {
                 throw new NotFoundException(__CLASS__);
@@ -74,7 +74,7 @@ class Room
         }
     }
 
-    public static function getById(MatrixClient $client, string $id)
+    public static function getById(MatrixClient $client, AppServiceConfig $config, string $id)
     {
         try {
             $name = $client->getRoomName($id);
@@ -86,14 +86,14 @@ class Room
                 $alias = $client->getRoomAlias($id);
             } catch (Exception $e) {
                 if ($e->getCode() == 404) {
-                    $alias = self::toAlias($name);
+                    $alias = self::toAlias($config, $name);
                     $client->setRoomAlias($id, $alias);
                 }
                 else {
                     throw $e;
                 }
             }
-            return new Room($client, $id, $alias, $name, $members);
+            return new Room($id, $alias, $name, $members);
         } catch (Exception $e) {
             if ($e->getCode() == 404) {
                 throw new NotFoundException(__CLASS__);
@@ -102,19 +102,20 @@ class Room
         }
     }
 
-    public function addUser(User $user, Account $account): void
+    public function addUser(MatrixClient $client, User $user, Account $account): void
     {
         if (!$this->hasMember($user)) {
-            $this->client->createUser($user);
-            $this->client->invite($this, $user, $account);
-            $this->client->join($this, $user);
+            $client->createUser($user);
+            $client->invite($this, $user, $account);
+            $client->join($this, $user);
             $this->members[] = $user;
         }
     }
 
-    public static function toAlias(string $name)
+    public static function toAlias(AppServiceConfig $config, string $name)
     {
-        return strtolower(str_replace(' ', '-', trim($name)));
+        $sanitized = strtolower(str_replace(' ', '-', trim($name)));
+        return sprintf("#%s:%s", $sanitized, $config->domain);
     }
 
     private function validate()
@@ -123,6 +124,9 @@ class Room
             if (empty($this->$name)) {
                 throw new Exception("$name must not be empty");
             }
+        }
+        if ($this->alias[0] != '#') {
+            throw new Exception("Wrong format for alias");
         }
     }
 }

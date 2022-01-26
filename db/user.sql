@@ -1,1 +1,0 @@
-insert into user(id,name,email) values('@sb:syntest.lan','Søren Brønsted','soren@bronsted.dk')

@@ -4,7 +4,6 @@ namespace bronsted;
 
 use DateTime;
 use Exception;
-use stdClass;
 
 class Account extends DbObject
 {
@@ -56,27 +55,7 @@ class Account extends DbObject
 
     public function setAccountData(AppServiceConfig $config, AccountData $data): void
     {
-        $this->validate($data);
+        $data->validate();
         $this->data = Crypto::encrypt(serialize($data), $config->key);
-    }
-
-    private function validate(AccountData $data)
-    {
-        $rules = new stdClass();
-        $rules->imap_url = FILTER_DEFAULT;
-        $rules->smtp_host = FILTER_DEFAULT;
-        $rules->smtp_port = FILTER_VALIDATE_INT;
-        $rules->email = FILTER_VALIDATE_EMAIL;
-        $rules->user_name = FILTER_DEFAULT;
-        $rules->password = FILTER_DEFAULT;
-
-        $result = filter_var_array((array)$data, (array)$rules);
-        $test = array_filter(array_values($result), function ($item) {
-            return !empty($item);
-        });
-        if (count($test) != count((array)$rules)) {
-            //TODO P2 which properties fails and send a validation exception
-            throw new Exception('Imap data is not valid');
-        }
     }
 }

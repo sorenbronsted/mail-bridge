@@ -16,7 +16,7 @@ class AccountTest extends TestCase
 
     public function testAccountDataOk()
     {
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $account = Fixtures::account($user);
 
         $this->assertEmpty($account->data);
@@ -36,7 +36,7 @@ class AccountTest extends TestCase
 
     public function testAccountDataFail()
     {
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $account = Fixtures::account($user);
         $config = $this->app->getContainer()->get(AppServiceConfig::class);
 
@@ -51,7 +51,7 @@ class AccountTest extends TestCase
 
     public function testVerifyOk()
     {
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $account = Fixtures::account($user);
         $account->setAccountData($this->config, Fixtures::accountData());
 
@@ -66,7 +66,7 @@ class AccountTest extends TestCase
 
     public function testVerifyFail()
     {
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $account = Fixtures::account($user);
         $config = $this->app->getContainer()->get(AppServiceConfig::class);
         $account->setAccountData($config, Fixtures::accountData());

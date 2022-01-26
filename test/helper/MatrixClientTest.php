@@ -22,7 +22,7 @@ class MatrixClientTest extends TestCase
         $mock->method('post')->with($this->stringContains('register'));
         $mock->method('put')->with($this->stringContains('profile'));
 
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $ts = new DateTime();
         $client = $this->container->get(MatrixClient::class);
         $client->createUser($user, $ts);
@@ -39,7 +39,7 @@ class MatrixClientTest extends TestCase
             ->with($this->stringContains('createRoom'))
             ->willReturn($fixture);
 
-        $user = Fixtures::puppet($this->config->domain);
+        $user = Fixtures::puppet($this->config);
         $ts = new DateTime();
         $client = $this->container->get(MatrixClient::class);
         $result = $client->createRoom('test', 'test', $user);
@@ -52,8 +52,8 @@ class MatrixClientTest extends TestCase
         $mock->method('post')->with($this->stringContains('join'));
         $client = $this->container->get(MatrixClient::class);
 
-        $room = Fixtures::room($client, $this->config->domain);
-        $user = Fixtures::puppet($this->config->domain);
+        $room = Fixtures::room($this->config);
+        $user = Fixtures::puppet($this->config);
         $client->join($room, $user);
         $this->assertTrue(true);
     }
@@ -64,8 +64,8 @@ class MatrixClientTest extends TestCase
         $mock->method('post')->with($this->stringContains('invite'));
         $client = $this->container->get(MatrixClient::class);
 
-        $room = Fixtures::room($client, $this->config->domain);
-        $user = Fixtures::puppet($this->config->domain);
+        $room = Fixtures::room($this->config);
+        $user = Fixtures::puppet($this->config);
         $account = Fixtures::account($user);
         $client->invite($room, $user, $account);
         $this->assertTrue(true);
@@ -78,8 +78,8 @@ class MatrixClientTest extends TestCase
         $mock->method('postStream')->willReturn((object)['content_uri' => '/someurl']);
         $client = $this->container->get(MatrixClient::class);
 
-        $room = Fixtures::room($client, $this->config->domain);
-        $user = Fixtures::puppet($this->config->domain);
+        $room = Fixtures::room($this->config);
+        $user = Fixtures::puppet($this->config);
         $ts = new DateTime();
         $message = Message::from(fopen(dirname(__DIR__) .'/data/with_attachment.mime', 'r'), true);
         $client->send($room, $user, $message, $ts);

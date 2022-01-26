@@ -7,13 +7,21 @@ use ZBateson\MbWrapper\MbWrapper;
 
 class UserTest extends TestCase
 {
+    private AppServiceConfig $config;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->config = $this->container->get(AppServiceConfig::class);
+    }
+
     public function testFromMail()
     {
         $name = 'Foo Bar';
         $email = 'foo@bar.com';
         $address = new AddressPart(new MbWrapper(), $name, $email);
-        $user = User::fromMail($address, 'matrix.com');
-        $this->assertEquals('@mail_foo/bar.com:matrix.com', $user->getId());
+        $user = User::fromMail($address, $this->config);
+        $this->assertEquals('@mail_foo/bar.com:' . $this->config->domain, $user->getId());
         $this->assertEquals($name, $user->getName());
         $this->assertEquals($email, $user->getEmail());
     }
@@ -24,13 +32,13 @@ class UserTest extends TestCase
         $email = 'foo@bar';
         $address = new AddressPart(new MbWrapper(), $name, $email);
         $this->expectExceptionMessageMatches('/not valid/');
-        $user = User::fromMail($address, 'matrix.com');
+        $user = User::fromMail($address, $this->config);
     }
 
     public function testPuppetFromId()
     {
         $name = 'Foo Bar';
-        $id = '@mail_foo/bar.com:matrix.com';
+        $id = '@mail_foo/bar.com:' . $this->config->domain;
         $user = User::fromId($id, $name);
         $this->assertEquals($name, $user->getName());
         $this->assertEquals('foo@bar.com', $user->getEmail());
@@ -39,7 +47,7 @@ class UserTest extends TestCase
     public function testFromId()
     {
         $name = 'Foo Bar';
-        $id = '@foo:bar.com';
+        $id = '@foo:bar.com:' . $this->config->domain;
         $user = User::fromId($id, $name);
         $this->assertEquals($name, $user->getName());
         $this->assertEmpty($user->getEmail());
@@ -48,7 +56,7 @@ class UserTest extends TestCase
     public function testFromNotValidId()
     {
         $name = 'Foo Bar';
-        $id = '@mail_foo/bar:matrix.com';
+        $id = '@mail_foo/bar:' . $this->config->domain;
         $this->expectExceptionMessageMatches('/not valid/');
         $user = User::fromId($id, $name);
     }

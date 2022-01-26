@@ -1,6 +1,6 @@
 <?php
 
-class Mail extends Ruckusing_Migration_Base
+class CreateMail extends Ruckusing_Migration_Base
 {
     public function up()
     {

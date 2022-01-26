@@ -53,7 +53,7 @@ class AppServiceCtrl
         try {
             $this->consumeEvents($txnId, $data);
         } catch (Throwable $t) {
-            Log::error($t->getMessage());
+            Log::error($t);
         }
 
         $response->getBody()->write(json_encode(new stdClass()));

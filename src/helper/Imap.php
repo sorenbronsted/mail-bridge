@@ -38,7 +38,7 @@ class Imap
     public function open(AccountData $accountData)
     {
         if ($this->connection == null) {
-            $this->connection = @imap_open($accountData->imap_url, $accountData->user, $accountData->password);
+            $this->connection = @imap_open($accountData->imap_url, $accountData->email, $accountData->password);
             if ($this->connection === false) {
                 $error = imap_last_error();
                 throw new Exception($error, 401);

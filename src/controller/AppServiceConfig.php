@@ -14,7 +14,6 @@ class AppServiceConfig
     public string $domain;
     public string $key;
     public string $cookieName;
-    public string $pidFile;
     public string $fileStoreRoot;
     public string $databaseUrl;
 

@@ -21,7 +21,7 @@ class FetchMail
     public function run()
     {
         $since = new DateTime("-5 min");
-        $account = Account::getWhere(" updated < :since", ['since' => $since])->current();
+        $account = Account::getWhere("state = 1 and updated < :since", ['since' => $since])->current();
         if (!$account) {
             return;
         }
@@ -38,6 +38,9 @@ class FetchMail
     private function fetch(Account $account)
     {
         $accountData = $account->getAccountData($this->config);
+        if (empty($accountData->imap_url) || empty($accountData->password)) {
+            return;
+        }
         $this->imap->open($accountData);
 
         // sort mailbox by date with newest first

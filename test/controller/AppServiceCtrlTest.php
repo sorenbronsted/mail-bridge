@@ -24,7 +24,7 @@ class AppServiceCtrlTest extends TestCase
         $this->store = $this->container->get(FileStore::class);
 
         $client = $this->container->get(MatrixClient::class);
-        $this->room = Fixtures::room($client, $this->config->domain);
+        $this->room = Fixtures::room($this->config);
         $client->method('getRoomName')->willReturn($this->room->getName());
         $client->method('getRoomAlias')->willReturn($this->room->getAlias());
         $client->method('getRoomMembers')->willReturn($this->room->getMembers());
