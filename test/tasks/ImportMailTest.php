@@ -132,7 +132,7 @@ class ImportMailTest extends TestCase
         $client->expects($this->once())->method('getRoomIdByAlias')->willThrowException(new Exception('', 404));
         $client->expects($this->once())->method('createRoom')->with(
             $this->equalTo($from->getName()),
-            $this->equalTo(Room::toAlias($this->config, $from->getId())),
+            $this->equalTo(Room::toAlias($this->config, $from->getName())),
             $this->equalTo($from),
             $this->equalTo(true)
         );
@@ -154,7 +154,7 @@ class ImportMailTest extends TestCase
         $client->expects($this->once())->method('getRoomIdByAlias')->willThrowException(new Exception('', 404));
         $client->expects($this->once())->method('createRoom')->with(
             $this->stringStartsWith('No subject'),
-            $this->stringStartsWith('#no-subject'),
+            $this->stringStartsWith('#mail_'),
             $this->equalTo($from),
             $this->equalTo(false)
         );

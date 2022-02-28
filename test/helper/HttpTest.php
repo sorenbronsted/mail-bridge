@@ -3,8 +3,7 @@
 namespace bronsted;
 
 use Exception;
-use JustSteveKing\HttpSlim\HttpClient;
-use Psr\Http\Client\ClientInterface;
+use React\Http\Browser;
 use Slim\Psr7\Factory\StreamFactory;
 use stdClass;
 
@@ -15,8 +14,8 @@ class HttpTest extends TestCase
         $fixture = new stdClass();
         $fixture->key = 'value';
 
-        $mock = $this->mock(HttpClient::class);
-        $mock->method('get')->willReturn($this->createResponse(200, json_encode($fixture)));
+        $mock = $this->mock(Browser::class);
+        $mock->method('get')->willReturn($this->createPromiseResolved($this->createResponse(200, json_encode($fixture))));
 
         $http = $this->container->get(Http::class);
         $result = $http->get('/somewhere');
@@ -25,8 +24,8 @@ class HttpTest extends TestCase
 
     public function testGetFail()
     {
-        $mock = $this->mock(HttpClient::class);
-        $mock->method('get')->willReturn($this->createResponse(500));
+        $mock = $this->mock(Browser::class);
+        $mock->method('get')->willReturn($this->createPromiseResolved($this->createResponse(500)));
         $http = $this->container->get(Http::class);
 
         $this->expectExceptionCode(500);
@@ -38,10 +37,10 @@ class HttpTest extends TestCase
         $fixture = new stdClass();
         $fixture->key = 'value';
 
-        $mock = $this->mock(HttpClient::class);
+        $mock = $this->mock(Browser::class);
         $http = $this->container->get(Http::class);
         foreach (['put', 'post'] as $method) {
-            $mock->method($method)->willReturn($this->createResponse(200, json_encode((object)[])));
+            $mock->method($method)->willReturn($this->createPromiseResolved($this->createResponse(200, json_encode((object)[]))));
             $result = $http->$method('/somewhere', $fixture);
             $this->assertEquals((object)[], $result, $method);
         }
@@ -52,14 +51,13 @@ class HttpTest extends TestCase
         $fixture = new stdClass();
         $fixture->key = 'value';
 
-        $mock = $this->mock(HttpClient::class);
+        $mock = $this->mock(Browser::class);
         $http = $this->container->get(Http::class);
         foreach (['put', 'post'] as $method) {
-            $mock->method($method)->willReturn($this->createResponse(500));
+            $mock->method($method)->willReturn($this->createPromiseResolved($this->createResponse(500)));
             try {
                 $http->$method('/somewhere', $fixture);
-            }
-            catch(Exception $e) {
+            } catch (Exception $e) {
                 $this->assertTrue(true);
             }
         }
@@ -70,13 +68,10 @@ class HttpTest extends TestCase
         $fixture = new stdClass();
         $fixture->key = 'value';
 
-        $mockClient = $this->mock(ClientInterface::class);
-        $mockClient->method('sendRequest')->willReturn($this->createResponse(200, json_encode((object)[])));
-        $mock = $this->mock(HttpClient::class);
-        $mock->method('getClient')->willReturn($mockClient);
+        $mock = $this->mock(Browser::class);
+        $mock->method('post')->willReturn($this->createPromiseResolved($this->createResponse(200, json_encode((object)[]))));
 
         $http = $this->container->get(Http::class);
-
         $stream = (new StreamFactory())->createStream(json_encode($fixture));
         $result = $http->postStream('/somewhere', 'application/json', $stream);
         $this->assertEquals((object)[], $result);
@@ -87,10 +82,8 @@ class HttpTest extends TestCase
         $fixture = new stdClass();
         $fixture->key = 'value';
 
-        $mockClient = $this->mock(ClientInterface::class);
-        $mockClient->method('sendRequest')->willReturn($this->createResponse(500));
-        $mock = $this->mock(HttpClient::class);
-        $mock->method('getClient')->willReturn($mockClient);
+        $mock = $this->mock(Browser::class);
+        $mock->method('post')->willReturn($this->createPromiseResolved($this->createResponse(500)));
 
         $http = $this->container->get(Http::class);
 
@@ -104,10 +97,13 @@ class HttpTest extends TestCase
         $fixture = new stdClass();
         $fixture->key = 'value';
 
-        $mock = $this->mock(HttpClient::class);
+        $mock = $this->mock(Browser::class);
         $mock->method('get')->willReturn(
-            $this->createResponse(200,
-                (new StreamFactory())->createStream(json_encode($fixture))
+            $this->createPromiseResolved(
+                $this->createResponse(
+                    200,
+                    (new StreamFactory())->createStream(json_encode($fixture))
+                )
             )
         );
 
@@ -123,13 +119,16 @@ class HttpTest extends TestCase
         $fixture = new stdClass();
         $fixture->key = 'value';
 
-        $mock = $this->mock(HttpClient::class);
+        $mock = $this->mock(Browser::class);
         $mock->method('get')->willReturn(
-            $this->createResponse(
-                500, (new StreamFactory())
-                    ->createStream(json_encode($fixture))
+            $this->createPromiseResolved(
+                $this->createResponse(
+                    500,
+                    (new StreamFactory())
+                        ->createStream(json_encode($fixture))
                 )
-            );
+            )
+        );
 
         $http = $this->container->get(Http::class);
         $this->expectExceptionCode(500);

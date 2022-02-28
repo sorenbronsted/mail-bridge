@@ -18,12 +18,12 @@ class AddAccount
     {
         // {imap.gmail.com:993/imap/ssl}INBOX
         $accountData = new stdClass();
-        $accountData->imap_url = '{imap.nowhere:993/imap/ssl}INBOX';
+        $accountData->imap_url = ''; //'{imap.nowhere:993/imap/ssl}INBOX';
         $accountData->smtp_host = 'localhost'; // Mailhog
         $accountData->smtp_port = '8025';
         $accountData->email = 'foo@bar.com';
         $accountData->user_name = 'Foo Bar';
-        $accountData->password = '1234';
+        $accountData->password = ''; //'1234';
 
         // Create og update account
         $userId = '@sb:syntest.lan'; // This must a user known in synapse
@@ -36,6 +36,7 @@ class AddAccount
         }
         $account->name = 'test';
         $account->state = Account::StateOk;
+        $account->state_text = 'Ok';
         $account->user_id = $userId;
         $account->setAccountData($this->config, new AccountData($accountData));
         $account->save();

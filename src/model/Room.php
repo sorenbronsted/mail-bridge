@@ -42,6 +42,9 @@ class Room
 
     public static function create(MatrixClient $client, AppServiceConfig $config, string $subject, string $name, User $creator, bool $direct): Room
     {
+        if (!$client->hasUser($creator)) {
+            $client->createUser($creator);
+        }
         $alias = self::toAlias($config, $subject);
         $id = $client->createRoom($name, $alias, $creator, $direct);
         $room = new Room($id, $alias, $name, [$creator]);
@@ -115,7 +118,7 @@ class Room
     public static function toAlias(AppServiceConfig $config, string $name)
     {
         $sanitized = strtolower(str_replace(' ', '-', trim($name)));
-        return sprintf("#%s:%s", $sanitized, $config->domain);
+        return sprintf("#mail_%s:%s", $sanitized, $config->domain);
     }
 
     private function validate()

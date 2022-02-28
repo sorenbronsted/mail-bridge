@@ -4,7 +4,7 @@ namespace bronsted;
 
 use DateTime;
 use Exception;
-
+use React\EventLoop\Loop;
 use stdClass;
 use Throwable;
 use ZBateson\MailMimeParser\Header\HeaderConsts;
@@ -20,34 +20,38 @@ class ImportMail
     private AppServiceConfig $config;
     private FileStore $store;
     private MatrixClient $client;
+    private int $txn;
 
     public function __construct(AppServiceConfig $config, FileStore $store, MatrixClient $client)
     {
         $this->config = $config;
         $this->store = $store;
         $this->client = $client;
+        $this->txn = 0;
     }
 
     public function run()
     {
-        // This process one mail at a time because it is expected to run offent
-        $mail = Mail::getBy(['action' => Mail::ActionImport, 'fail_code' => 0])->current();
+        $txn = $this->txn = $this->txn + 1;
+        // This process one mail at a time because it is expected to run often
+//        Log::info('{txn} - Starting import', ['txn' => $txn]);
+        $mail = Mail::popImport();
         if (!$mail) {
-            // Retry failed imports
-            $mail = Mail::getBy(['action' => Mail::ActionImport], ['desc', 'last_try'])->current();
-            if (!$mail) {
-                return;
-            }
+//            Log::info('{txn} - No mails to import', ['txn' => $txn]);
+            return;
         }
+        Log::info('{txn} - Starting import', ['txn' => $txn]);
         try {
+            Log::info('{txn} - Importing', ['txn' => $txn]);
             $this->import($mail);
+            Log::info('{txn} - Destroying', ['txn' => $txn]);
             $mail->destroy($this->store);
         } catch (Throwable $t) {
-            Log::error($t);
-            $mail->fail_code = $t->getCode();
-            $mail->last_try = new DateTime();
-            $mail->save();
+            //Log::error($t);
+            $mail->failed($t->getCode());
+            Log::info('{txn} - Failed with {code}', ['txn' => $txn, 'code' => $t->getCode()]);
         }
+        Log::info('{txn} - Done', ['txn' => $txn]);
     }
 
     private function import(Mail $mail)
@@ -117,7 +121,7 @@ class ImportMail
         try {
             $room = Room::getBySubject($this->client, $this->config, $header->from->getId());
         } catch (NotFoundException $e) {
-            $room = Room::create($this->client, $this->config, $header->from->getId(), $header->from->getName(), $header->from, true);
+            $room = Room::create($this->client, $this->config, $header->from->getName(), $header->from->getName(), $header->from, true);
         }
         return $room;
     }

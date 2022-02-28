@@ -46,6 +46,17 @@ class AppServiceCtrl
         return $response->withHeader('Location', '/account')->withStatus(302);
     }
 
+    public function users(ServerRequestInterface $request, ResponseInterface $response, string $userId): MessageInterface
+    {
+        $response->getBody()->write(json_encode(new stdClass()));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    }
+
+    public function rooms(ServerRequestInterface $request, ResponseInterface $response, string $roomAlias): MessageInterface
+    {
+        $response->getBody()->write(json_encode(new stdClass()));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    }
 
     public function events(ServerRequestInterface $request, ResponseInterface $response, string $txnId): MessageInterface
     {

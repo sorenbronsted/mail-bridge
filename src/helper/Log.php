@@ -14,7 +14,7 @@ class Log
         self::$instance = $instance;
     }
 
-    public static function __callStatic(string $name, $args)
+    public static function __callStatic(string $name, array $args)
     {
         if ($args[0] instanceof Throwable) {
             $th = $args[0];
@@ -33,7 +33,7 @@ class Log
                 ]);
             }
         } else {
-            self::$instance->$name($args[0], $args[1]);
+            self::$instance->$name($args[0], $args[1] ?? []);
         }
     }
 }

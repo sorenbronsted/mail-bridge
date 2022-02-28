@@ -20,8 +20,9 @@ class Mail extends DbObject
     protected ?string $file_id;
     protected ?int $fail_code;
     protected ?int $action;
-    protected ?int $account_uid;
+    protected ?int $taken;
     protected DateTime $last_try;
+    protected ?int $account_uid;
 
     public function __construct(?string $id = null, ?string $file_id = null, ?int $action = null, ?int $account_uid = null)
     {
@@ -31,6 +32,7 @@ class Mail extends DbObject
         $this->action = $action;
         $this->account_uid = $account_uid;
         $this->fail_code = 0;
+        $this->taken = 0;
         $this->last_try = new DateTime();
     }
 
@@ -64,6 +66,24 @@ class Mail extends DbObject
     {
         $store->remove($this->file_id);
         parent::delete();
+    }
+
+    public function failed(int $code)
+    {
+        $this->taken = 0;
+        $this->fail_code = $code;
+        $this->last_try = new DateTime();
+        $this->save();
+    }
+
+    public static function popImport()
+    {
+        $mail = Mail::getBy(['action' => Mail::ActionImport, 'fail_code' => 0, 'taken' => 0])->current();
+        if ($mail) {
+            $mail->taken = 1;
+            $mail->save();
+        }
+        return $mail;
     }
 
     public static function createFromMail(Account $account, FileStore $store, string $message): Mail

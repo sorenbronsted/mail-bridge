@@ -90,4 +90,10 @@ class UserTest extends TestCase
         User::validateEmail('foo@bar.com');
         $this->assertTrue(true);
     }
+
+    public function testLocalId()
+    {
+        $user = Fixtures::puppet($this->config);
+        $this->assertEquals('mail_foo/bar.com', $user->localId());
+    }
 }

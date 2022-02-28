@@ -13,7 +13,7 @@ function bootstrap(): App
     config($container);
     logging($container);
     database($container);
-    client($container);
+    //TODO not needed anymore client($container);
 
     $app = Bridge::create($container);
     $app->add(new ContentLengthMiddleware());

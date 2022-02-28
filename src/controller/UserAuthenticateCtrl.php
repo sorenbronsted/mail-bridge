@@ -30,7 +30,7 @@ class UserAuthenticateCtrl
         }
         //TODO P2 jwt cookie
         $id = $cookies[$this->config->cookieName];
-        $user = User::fromId($id, 'TODO fixme');
+        $user = User::fromId($id, 'TODO P2 fixme');
         $this->container->set(User::class, $user);
         return $handler->handle($request);
     }

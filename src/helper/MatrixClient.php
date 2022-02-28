@@ -27,6 +27,22 @@ class MatrixClient
         $this->config = $config;
     }
 
+    public function hasUser(User $user): bool
+    {
+        try {
+            $url = $this->base . '/profile/' . urlencode($user->getId());
+            $this->http->get($url);
+            return true;
+        } catch (Exception $e) {
+            if ($e->getCode() == 404) {
+                return false;
+            }
+            else {
+                throw $e;
+            }
+        }
+    }
+
     public function createUser(User $user)
     {
         $url = $this->base . '/register';
@@ -56,7 +72,7 @@ class MatrixClient
 
     public function getRoomIdByAlias(string $alias): string
     {
-        $url = $this->base . '/directory/room/' . urldecode($alias);
+        $url = $this->base . '/directory/room/' . urlencode($alias);
         $result = $this->http->get($url);
         return $result->room_id;
     }
@@ -64,7 +80,7 @@ class MatrixClient
     public function getRoomName(string $id): string
     {
         $event = 'm.room.name';
-        $url = $this->base . '/rooms/' . urldecode($id) . '/state/' . urlencode($event);
+        $url = $this->base . '/rooms/' . urlencode($id) . '/state/' . urlencode($event);
         $result = $this->http->get($url);
         return $result->content->name;
     }
@@ -72,23 +88,23 @@ class MatrixClient
     public function getRoomAlias(string $id): string
     {
         $event = 'm.room.canonical_alias';
-        $url = $this->base . '/rooms/' . urldecode($id) . '/state/ ' . urlencode($event);
+        $url = $this->base . '/rooms/' . urlencode($id) . '/state/ ' . urlencode($event);
         $result = $this->http->get($url);
         return $result->content->alias;
     }
 
     public function setRoomAlias(string $id, string $alias): void
     {
-        $url = $this->base . '/directory/rooms/' . urldecode($alias);
+        $url = $this->base . '/directory/rooms/' . urlencode($alias);
         $this->http->put($url, (object)['room_id' => $id]);
     }
 
     public function getRoomMembers(string $id): array
     {
-        $url = $this->base . '/room/' . urldecode($id) . 'joined_members';
+        $url = $this->base . '/room/' . urlencode($id) . 'joined_members';
         $result = $this->http->get($url);
         $members = [];
-        foreach($result->joined as $id => $body){
+        foreach ($result->joined as $id => $body) {
             $members[] = User::fromId($id, $body->display_name);
         }
         return $members;
